@@ -1,0 +1,17 @@
+*.o
+testcrt
+testdisc
+testsqfree
+testprime
+test-conductor
+test-primitive
+test-character-extension
+test-values
+test-mpfi-fft
+dft-test
+animation
+chimax
+l-one
+large-L-one-Mchi
+large-L-one-gauss
+.*.swp
