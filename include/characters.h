@@ -1,11 +1,12 @@
+#ifndef __CHARACTERS_H__
+#define __CHARACTERS_H__
+
 #include "slint.h"
 
 #include <complex>
 #include <cmath>
 #include <vector>
 #include <fftw3.h>
-
-using namespace std;
 
 #ifdef USE_MPFI
 #include "mpfi_fft.h"
@@ -29,8 +30,8 @@ public:
 
     ~DirichletCharacter() {}
     long exponent(long n);
-    complex<double> max(long* index);
-    complex<double> sum(long end);
+    std::complex<double> max(long* index);
+    std::complex<double> sum(long end);
     std::complex<double> value(long n);
     bool is_primitive();
     bool is_primitive_at_two();
@@ -39,7 +40,8 @@ public:
     void primitive_part_at_two(long * index, long * conductor);
     void primitive_part_at_known_p(long * index, long * conductor, long j);
     long conductor(long * index = NULL);
-    complex<double> gauss_sum();
+    std::complex<double> gauss_sum();
+    void values_mod_p(int &p, int * chi_values);
 };
 
 
@@ -182,7 +184,7 @@ public:
         
         if(q_even > 4) {
             B = new long[q_even];
-            zeta_powers_even = new complex<double>[q_even/4];
+            zeta_powers_even = new std::complex<double>[q_even/4];
 
 #ifdef USE_MPFI
             zeta_powers_even_mpfi = new mpfi_c_t[q_even/4];
@@ -280,8 +282,8 @@ public:
     }
 
     std::complex<double> chi(long m, long n) {
-        complex<double> even_part = 1.0;
-        complex<double> odd_part = 1.0;
+        std::complex<double> even_part = 1.0;
+        std::complex<double> odd_part = 1.0;
         if(q_even > 1) {
             if(m % 2 == 0 || n % 2 == 0) {
                 return 0;
@@ -354,7 +356,7 @@ public:
 
 #ifdef USE_MPFI
     void chi(mpfi_c_t out, long m, long n) {
-        complex<double> odd_part = 1.0;
+        std::complex<double> odd_part = 1.0;
         if(q_even > 1) {
             if(m % 2 == 0 || n % 2 == 0) {
                 mpfi_c_zero(out);
@@ -395,7 +397,7 @@ public:
         return DirichletCharacter(this, m);
     }
 
-    void DFTsum_direct (complex<double> * out, complex<double> * in) {
+    void DFTsum_direct (std::complex<double> * out, std::complex<double> * in) {
         //
         // Set out[n] to the sum
         //
@@ -406,7 +408,7 @@ public:
 
         
         for(int n = 0; n < q; n++) {
-            complex<double> S = 0.0;
+            std::complex<double> S = 0.0;
             for(int k = 0; k < q; k++) {
                 S += in[k] * chi(n,k);
             }
@@ -437,8 +439,8 @@ public:
     }
 #endif
 
-    void all_sums(complex<double> * out, long end) {
-        complex<double> * dft_in = new complex<double>[q]();
+    void all_sums(std::complex<double> * out, long end) {
+        std::complex<double> * dft_in = new std::complex<double>[q]();
         for(long k = 0; k <= end; k++) {
             dft_in[k] = 1.0;
         }
@@ -554,13 +556,13 @@ public:
         build_dft_translation();
         for(int n = 0; n < q; n++) {
             if(idft_translation[n] != -1) {
-                cout << n << " " << idft_translation[n] << endl;
+                std::cout << n << " " << idft_translation[n] << std::endl;
             }
         }
     }
 };
 
-long DirichletGroup::index_from_primitive_character(long q0, long primitive_index) {
+inline long DirichletGroup::index_from_primitive_character(long q0, long primitive_index) {
     //
     // Given a conductor q0 dividing q and an index of a character
     // mod q0, return the index of the character mod q which is the character
@@ -570,8 +572,8 @@ long DirichletGroup::index_from_primitive_character(long q0, long primitive_inde
     if(primitive_index == 1) return 1;
     if(q % q0 != 0) return -1;
 
-    vector<long> moduli;            // We're going to do this for each prime power
-    vector<long> local_indices;     // dividing the modulus, and then CRT the results
+    std::vector<long> moduli;            // We're going to do this for each prime power
+    std::vector<long> local_indices;     // dividing the modulus, and then CRT the results
                                     // together.
     for(int j = 0; j < k; j++) {
         long p = (*primes)[j];
@@ -621,7 +623,7 @@ long DirichletGroup::index_from_primitive_character(long q0, long primitive_inde
     return CRT(local_indices, moduli);
 }
 
-void DirichletGroup::DFTsum (complex<double> * out, complex<double> * in) {
+inline void DirichletGroup::DFTsum (std::complex<double> * out, std::complex<double> * in) {
     if(q < 4) {
         // just don't want to deal with problems with 2 right now.
         DFTsum_direct(out, in);
@@ -630,9 +632,9 @@ void DirichletGroup::DFTsum (complex<double> * out, complex<double> * in) {
 
     build_dft_translation();
 
-    complex<double> *a, *X;
-    a = new complex<double>[phi_q];
-    X = new complex<double>[phi_q];
+    std::complex<double> *a, *X;
+    a = new std::complex<double>[phi_q];
+    X = new std::complex<double>[phi_q];
 
 
     for(int n = 0; n < q; n++) {
@@ -657,7 +659,7 @@ void DirichletGroup::DFTsum (complex<double> * out, complex<double> * in) {
 }
 
 #ifdef USE_MPFI
-void DirichletGroup::DFTsum (mpfi_c_t * out, mpfi_c_t * in) {
+inline void DirichletGroup::DFTsum (mpfi_c_t * out, mpfi_c_t * in) {
     //if(q < 4) {
     //    // just don't want to deal with problems with 2 right now.
     //    DFTsum_direct(out, in);
@@ -710,7 +712,7 @@ void DirichletGroup::DFTsum (mpfi_c_t * out, mpfi_c_t * in) {
 
 
 
-DirichletCharacter::DirichletCharacter(DirichletGroup * parent_, long m_) : parent(parent_), m(m_) {
+inline DirichletCharacter::DirichletCharacter(DirichletGroup * parent_, long m_) : parent(parent_), m(m_) {
         //
         // This doesn't actually do anything. Computing characters
         // using DirichletCharacter is not going to be any faster
@@ -718,11 +720,11 @@ DirichletCharacter::DirichletCharacter(DirichletGroup * parent_, long m_) : pare
         //
 }
 
-complex<double> DirichletCharacter::gauss_sum() {
-    complex<double> S = 0;
+inline std::complex<double> DirichletCharacter::gauss_sum() {
+    std::complex<double> S = 0;
     long q = parent->q;
-    complex<double> z = e(1.0/q);
-    complex<double> x = z;
+    std::complex<double> z = e(1.0/q);
+    std::complex<double> x = z;
     for(long n = 1; n < q; n++) {
         S = S + value(n) * x;
         x = x * z;
@@ -730,7 +732,7 @@ complex<double> DirichletCharacter::gauss_sum() {
     return S;
 }
 
-complex<double> DirichletCharacter::max(long * index) {
+inline std::complex<double> DirichletCharacter::max(long * index) {
     // return the max of the partial sums of the character,
     // and set *index to the spot where the max occurs,
     // unless index = 0
@@ -746,7 +748,7 @@ complex<double> DirichletCharacter::max(long * index) {
 
     std::complex<double> S(0,0);
     double absmax = 0.0;
-    complex<double> current_max = 0.0;
+    std::complex<double> current_max = 0.0;
     long max_location;
 
     for(long n = 0; n <= (parent->q-1)/2; n++) {
@@ -764,7 +766,7 @@ complex<double> DirichletCharacter::max(long * index) {
     return current_max;
 }
 
-complex<double> DirichletCharacter::sum(long end) {
+inline std::complex<double> DirichletCharacter::sum(long end) {
     std::complex<double> S(0,0);
 
     for(long n = 0; n <= end; n++) {
@@ -789,24 +791,24 @@ complex<double> DirichletCharacter::sum(long end) {
 //    return x;
 //}
 
-long DirichletCharacter::exponent(long n) {
+inline long DirichletCharacter::exponent(long n) {
     return parent->exponent(m,n);
 }
 
-std::complex<double> DirichletCharacter::value(long n) {
+inline std::complex<double> DirichletCharacter::value(long n) {
     return parent->chi(m,n);
     //if(parent->A[m][0] == -1 || parent->A[n][0] == -1)
     //    return 0;
     //return parent->zeta_powers[exponent(n)];
 }
 
-bool DirichletCharacter::is_primitive() {
+inline bool DirichletCharacter::is_primitive() {
     // return whether or not this character is primitive
 
     return is_primitive_at_two() && is_primitive_at_odd_part();
 }
 
-bool DirichletCharacter::is_primitive_at_odd_part() {
+inline bool DirichletCharacter::is_primitive_at_odd_part() {
     // this is computed one prime at a time, and the
     // character will be primitive if and only if it
     // is primitive at every prime.
@@ -822,7 +824,7 @@ bool DirichletCharacter::is_primitive_at_odd_part() {
     }
 }
 
-bool DirichletCharacter::is_primitive_at_two() {
+inline bool DirichletCharacter::is_primitive_at_two() {
     long q_even = parent->q_even;
     long * B = parent->B;
     long n = m % q_even;
@@ -836,7 +838,7 @@ bool DirichletCharacter::is_primitive_at_two() {
     }
 }
 
-bool DirichletCharacter::is_even() {
+inline bool DirichletCharacter::is_even() {
     // return whether or not this character is even
     //
     // We just figure out if the character is even by evaluating it at q-1.
@@ -847,7 +849,7 @@ bool DirichletCharacter::is_even() {
     return abs(value(parent->q - 1) - 1.0) < .5;
 }
 
-void DirichletCharacter::primitive_part_at_known_p(long * index, long * conductor, long j) {
+inline void DirichletCharacter::primitive_part_at_known_p(long * index, long * conductor, long j) {
     //
     //    Return the conductor and the index of the primitive character
     //    associated to the p-part of the character for the j-th odd prime
@@ -873,7 +875,7 @@ void DirichletCharacter::primitive_part_at_known_p(long * index, long * conducto
     *index = PowerMod(parent->generators->at(j), dlog, *conductor);
 }
 
-void DirichletCharacter::primitive_part_at_two(long * index, long * conductor) {
+inline void DirichletCharacter::primitive_part_at_two(long * index, long * conductor) {
     // Return the conductor and the index of the primitive
     // character associated to the even part of the modulus.
 
@@ -925,9 +927,9 @@ void DirichletCharacter::primitive_part_at_two(long * index, long * conductor) {
     }
 }
 
-long DirichletCharacter::conductor(long * index) {
-    vector<long> moduli;
-    vector<long> indices;
+inline long DirichletCharacter::conductor(long * index) {
+    std::vector<long> moduli;
+    std::vector<long> indices;
     long q = parent->q;
     long q1;
     long m1;
@@ -954,3 +956,58 @@ long DirichletCharacter::conductor(long * index) {
     return q0;
 }
 
+inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
+    //
+    // Given a prime p such that the order of chi divides p - 1, fill the array
+    // chi_values with values of this character mod p.
+    //
+    // If p == 0, we choose an appropriate prime and set p to that prime.
+    //
+    
+    int q = parent->q;
+    int order = order_mod(m, q);
+    int phi_q = parent->phi_q;
+    if(p == 0) {
+        p = order + 1;
+        while(p < 10000) p += order;
+    }
+    else {
+        if( (p - 1) % order != 0) {
+            p += order - (p - 1) % order;
+        }
+    }
+    while(!is_prime(p) || phi_q % p == 0) p += order;
+            // can p divide phi(N)?...
+            // not going to think about
+            // that right now.
+    
+    if( (p - 1) % order != 0) {
+        std::cerr << "values_mod_p called with an invalid prime."
+             << "p = " << p << std::endl
+             << "order = " << order << std::endl;
+
+        exit(1);
+    }
+    int g = primitive_root(p);
+    int exponent_adjustment = phi_q/order;
+    g = PowerMod(g, (p-1)/order, p);
+
+    for(int k = 0; k < q; k++) {
+        if(GCD(k, q) != 1) {
+            chi_values[k] = 0;
+            continue;
+        }
+        long e = exponent(k);
+        if(e % exponent_adjustment != 0) {
+            std::cerr << q << " " << m << " " << e << " " << order << " " << phi_q << " " <<
+                exponent_adjustment << std::endl;
+            std::cerr << "error" << std::endl;
+            exit(0);
+        }
+        chi_values[k] = PowerMod(g, e/exponent_adjustment, p);
+        //cout << chi.m << " " << p << " " << k << " " << chi_values[k] << endl;
+    }
+
+}
+
+#endif

@@ -6,13 +6,14 @@
 #define _SLINT_H_
 
 #include <vector>
+#include <algorithm>
 #include <iostream>
 
-long next_prime(long);
+static long next_prime(long);
 
 // taken from NTL, stripped of
 // overflow checking
-void XGCD(long& d, long& s, long& t, long a, long b)
+static void XGCD(long& d, long& s, long& t, long a, long b)
 {
    long  u, v, u0, v0, u1, v1, u2, v2, q, r;
 
@@ -57,7 +58,7 @@ void XGCD(long& d, long& s, long& t, long a, long b)
 }
    
 // taken from NTL:
-long InvMod(long a, long n)
+static long InvMod(long a, long n)
 {
    long d, s, t;
 
@@ -85,7 +86,7 @@ static inline long MulMod(long a, long b, long n)
 }
 
 // taken from NTL
-long PowerMod(long a, long ee, long n)
+static long PowerMod(long a, long ee, long n)
 {
     long x, y;
 
@@ -111,7 +112,7 @@ long PowerMod(long a, long ee, long n)
 
 // taken from NTL,
 // stripped of overflow checking
-long GCD(long a, long b)
+static long GCD(long a, long b)
 {
    long u, v, t, x;
 
@@ -141,7 +142,7 @@ long GCD(long a, long b)
    return x;
 }
 
-long euler_phi(long n) {
+static long euler_phi(long n) {
     // yes, this is stupidly slow...
     //
     // I don't care.
@@ -164,7 +165,7 @@ long euler_phi(long n) {
     return phi;
 }
 
-void factors(long n, std::vector<long> * primes, std::vector<int> * exponents) {
+static void factors(long n, std::vector<long> * primes, std::vector<int> * exponents) {
     //
     // appends the prime factors of n to *primes,
     // and if exponents if not NULL, appends the exponents
@@ -195,7 +196,7 @@ void factors(long n, std::vector<long> * primes, std::vector<int> * exponents) {
     }
 }
 
-bool is_squarefree(long n) {
+static bool is_squarefree(long n) {
     //
     // factors n by trial division, checking for squarefreeness along the
     // way.
@@ -222,7 +223,7 @@ bool is_squarefree(long n) {
     return true;
 }
 
-bool is_fundamental_discriminant(long n) {
+static bool is_fundamental_discriminant(long n) {
     if(n % 4 == 1) {
         return is_squarefree(n);
     }
@@ -240,7 +241,7 @@ bool is_fundamental_discriminant(long n) {
     }
 }
 
-long primitive_root(long n) {
+static long primitive_root(long n) {
     //
     // Return a primitive root mod n.
     //
@@ -307,7 +308,7 @@ long primitive_root(long n) {
     return -1;
 }
 
-bool is_prime_power(long q) {
+static bool is_prime_power(long q) {
     std::vector<long> primes;
     factors(q, &primes, NULL);
     if(primes.size() == 1)
@@ -316,7 +317,7 @@ bool is_prime_power(long q) {
         return false;
 }
 
-bool MR_test(long n, long a) {
+static bool MR_test(long n, long a) {
     long d = n - 1;
     int s = 0;
     while(d % 2 == 0) {
@@ -337,7 +338,7 @@ bool MR_test(long n, long a) {
     return false;
 }
 
-bool is_prime(long q) {
+static bool is_prime(long q) {
     if(q == 2 || q == 7 || q == 61) return true;
     if(q < 4759123141l) {
         return MR_test(q,2) && MR_test(q,7) && MR_test(q,61);
@@ -354,7 +355,7 @@ bool is_prime(long q) {
     }
 }
 
-long next_prime(long n) {
+static long next_prime(long n) {
     if(n < 2)
         return 2;
     if(n == 2)
@@ -369,7 +370,7 @@ long next_prime(long n) {
     return n;
 }
 
-long odd_part(long n) {
+static long odd_part(long n) {
     if(n == 0) {
         return 1;
     }
@@ -379,7 +380,7 @@ long odd_part(long n) {
     return n;
 }
 
-long kronecker(long n, long m) {
+static long kronecker(long n, long m) {
     if(GCD(n,m) != 1) {
         return 0;
     }
@@ -411,7 +412,7 @@ long kronecker(long n, long m) {
 
 
 
-long kronecker2(long n, long m) {
+static long kronecker2(long n, long m) {
     long t = 1;
     //cout << n << " " << m << " " << t << endl;
     long m_even, m_odd;
@@ -441,7 +442,7 @@ long kronecker2(long n, long m) {
     return t;
 }
 
-void prime_range(std::vector<long> * primes, long end, long start = 2) {
+static void prime_range(std::vector<long> * primes, long end, long start = 2) {
     // fill primes with a list of prime numbers between
     // start and end (including start but not end)
 
@@ -468,7 +469,7 @@ void prime_range(std::vector<long> * primes, long end, long start = 2) {
     delete [] sieve_range;
 }
 
-void squarefree_range(std::vector<long> * squarefrees, long end, long start = 1) {
+static void squarefree_range(std::vector<long> * squarefrees, long end, long start = 1) {
     // fill primes with a list of prime numbers between
     // start and end (including start but not end)
 
@@ -496,7 +497,7 @@ void squarefree_range(std::vector<long> * squarefrees, long end, long start = 1)
     delete [] sieve_range;
 }
 
-void discriminant_range(std::vector<long> * discs, long end, long start = 1) {
+static void discriminant_range(std::vector<long> * discs, long end, long start = 1) {
     std::vector<long> sqfrees;
     squarefree_range(&sqfrees, end, start);
 
@@ -519,7 +520,7 @@ void discriminant_range(std::vector<long> * discs, long end, long start = 1) {
     }
 }
 
-int order_mod(int n, int q) {
+static int order_mod(int n, int q) {
     //
     // return the smallest e such that n^e == 1 mod q, or
     // -1 if there is no such e
@@ -535,7 +536,7 @@ int order_mod(int n, int q) {
     return e;
 }
 
-long CRT(long a, long b, long m, long n) {
+static long CRT(long a, long b, long m, long n) {
     //
     // return x == a mod m and b mod n
     //
@@ -553,7 +554,7 @@ long CRT(long a, long b, long m, long n) {
     return (x1 + x2) % q;
 }
 
-long CRT(std::vector<long> a, std::vector<long> n) {
+static long CRT(std::vector<long> a, std::vector<long> n) {
     long x = a[0];
     long q = n[0];
     for(int k = 1; k < a.size(); k++) {
@@ -564,7 +565,7 @@ long CRT(std::vector<long> a, std::vector<long> n) {
     return x;
 }
 
-inline long ipow(long a, long n) {
+static inline long ipow(long a, long n) {
     long z = 1;
     for(int j = 0; j < n; j++) {
         z = z * a;
@@ -572,7 +573,7 @@ inline long ipow(long a, long n) {
     return z;
 }
 
-std::vector<long> divisors(long n) {
+static std::vector<long> divisors(long n) {
     std::vector<long> x;
     for(int d = 1; d <= n; d++) {
         if(n % d == 0) x.push_back(d);
@@ -580,17 +581,16 @@ std::vector<long> divisors(long n) {
     return x;
 }
 
-
 struct int_factor_t {
     int p;
     int e;
     int f; // f == p^e
 };
 
-int_factor_t * factor_table;
-int factor_table_size = 0;
+static int_factor_t * factor_table;
+static int factor_table_size = 0;
 
-void build_factor_table(int size) {
+static void build_factor_table(int size) {
     if(factor_table_size > 0) {
         delete [] factor_table;
     }
@@ -625,11 +625,19 @@ struct int_factorization_t {
     int nfactors;
 };
 
-void factor(int n, int_factorization_t &factorization) {
+static void factor(int n, int_factorization_t &factorization) {
+    const int max_table_size = 10000000;
     int sign = 1;
     if(n < 0) {sign = -1; n = -n;}
     if(n >= factor_table_size) {
-        std::cerr << "factorization of integers larger than the precomputed size not supported yet." << std::endl;
+        if(n < max_table_size) {
+            build_factor_table(std::max(100000, std::min(2*n, max_table_size)));
+        }
+        else {
+            std::cerr << "Factorization of integers > " << max_table_size << " not currently supported." << std::endl;
+            std::cerr << "You might try changing the default max size in slint.h if you have lots of ram available." << std::endl;
+            exit(0);
+        }
     }
     factorization.n = n;
     factorization.nfactors = 0;
@@ -639,6 +647,95 @@ void factor(int n, int_factorization_t &factorization) {
         n = n/f.f;
         factorization.nfactors++;
     }
+}
+
+//std::vector<int> divisors(int n) {
+//    std::vector<int> x;
+//    for(int d = 1; d <= n; d++) {
+//        if(n % d == 0) x.push_back(d);
+//    }
+//    return x;
+//}
+
+static std::vector<int> divisors(int n) {
+    std::vector<int> x;
+    int_factorization_t fac;
+    factor(n, fac);
+    int e[fac.nfactors];
+    for(int k = 0; k < fac.nfactors; k++) {e[k] = 0;}   // We'll write f = prod(fac.factors[k].p^e[k])
+    int f = 1;                                          // but we don't directly compute it this way.
+    do {
+        x.push_back(f);
+        int j = 0;
+        while(j < fac.nfactors && e[j] + 1 > fac.factors[j].e) {
+            while(e[j] > 0) {
+                e[j]--;
+                f = f/fac.factors[j].p;
+            }
+            j++;
+        }
+        if(j == fac.nfactors) f = 0;
+        else {
+            e[j]++;
+            f *= fac.factors[j].p;
+        }
+    } while(f != 0);
+
+    std::sort(x.begin(), x.end());
+
+    return x;
+}
+
+static int ndivisors(int n) {
+    int_factorization_t fac;
+    factor(n, fac);
+    int x = 1;
+    for(int k = 0; k < fac.nfactors; k++) {
+        x = x * (fac.factors[k].e + 1);
+    }
+    return x;
+}
+
+static int euler_phi(int n) {
+    int_factorization_t f;
+    factor(n, f);
+    int phi = 1;
+    for(int k = 0; k < f.nfactors; k++) {
+        int p = f.factors[k].p;
+        int e = f.factors[k].e;
+        int p_to_e = f.factors[k].f;
+        if(e == 1) {
+            phi *= (p-1);
+        }
+        else {
+            phi *= p_to_e/p * (p - 1);
+        }
+    }
+
+    return phi;
+}
+
+static int mobius(int n) {
+    int_factorization_t fac;
+    factor(n, fac);
+    int mu = 1;
+    for(int k = 0; k < fac.nfactors; k++) {
+        if(fac.factors[k].e > 1) {
+            return 0;
+        }
+        mu = -mu;
+    }
+    return mu;
+}
+
+static int squarefree_part(int n) {
+    int_factorization_t f;
+    factor(n, f);
+    int s = 1;
+    for(int k = 0; k < f.nfactors; k++) {
+        if(f.factors[k].e % 2 == 1) s *= f.factors[k].p;
+    }
+    return s;
 }
 
 #endif

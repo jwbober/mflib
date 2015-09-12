@@ -15,3 +15,11 @@ l-one
 large-L-one-Mchi
 large-L-one-gauss
 .*.swp
+weight1
+weight1-dimensions
+*.sage.py
+trace-TnTm
+trace-sieved
+trace-unsieved
+a.out
+test-tf
