@@ -190,6 +190,10 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
 
     if(d3 != nmod_mat_rank(basis3) || d4 != nmod_mat_rank(basis4)) {
         cout << "didn't get a matrix of full rank." << endl;
+        cout << "d3 = " << d3 << endl;
+        cout << "rank(basis3) = " << nmod_mat_rank(basis3) << endl;
+        cout << "d4 = " << d4 << endl;
+        cout << "rank(basis4) = " << nmod_mat_rank(basis4) << endl;
         exit(0);
     }
 

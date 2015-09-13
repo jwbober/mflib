@@ -45,7 +45,9 @@ int main(int argc, char ** argv) {
     for(int M : divisors(level)) {
         if(M % q == 0 && M > 1) {
             int dimension;
-            if(nmod_mat_nrows(bases[M]) == 0) dimension == 0;
+            if(nmod_mat_nrows(bases[M]) == 0) {
+                dimension = 0;
+            }
             else dimension = nmod_mat_entry(bases[M], 0, 1);
             int rank = nmod_mat_rank(bases[M]);
             cout << M << " " << dimension << " " << rank << endl;

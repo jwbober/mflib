@@ -502,7 +502,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
     if(!chi.is_even()) {                                            // 
         int q = chi.conductor();                                    // 
         for(int M : divisors(level)) {                              // We do something somewhat sensible if
-            if(M % q == 0) nmod_mat_init(bases[level], 0, 0, 2);    // we know that the dimension of the space
+            if(M % q == 0 && M > 1) nmod_mat_init(bases[M], 0, 0, 2);// we know that the dimension of the space
         }                                                           // is zero.
         return 0;                                                   //
     }                                                               //
