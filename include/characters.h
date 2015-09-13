@@ -181,6 +181,9 @@ public:
             }
         } // end of initialization of everything having to do
           // with q_odd
+        else {
+            phi_q_odd = 1;
+        }
         
         if(q_even > 4) {
             B = new long[q_even];
@@ -350,7 +353,6 @@ public:
         if(exponent == phi_q) {
             exponent -= phi_q;
         }
-
         return exponent;
     }
 
@@ -428,7 +430,6 @@ public:
             for(int k = 0; k < q; k++) {
                 if(!is_coprime_to_q(k)) continue;
                 chi(y, n, k);
-                //cout << endl;
                 mpfi_c_mul_ui(x, y, in[k]);
                 mpfi_c_add(out[n], out[n], x);
             }
@@ -543,7 +544,6 @@ public:
                         dft_index *= dft_lengths[j + even_dimension + 1];
                     }
                 }
-                //cout << dft_index << " " << idft_index << endl;
                 dft_translation[n] = dft_index;
                 idft_translation[n] = idft_index;
             }
@@ -1005,7 +1005,6 @@ inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
             exit(0);
         }
         chi_values[k] = PowerMod(g, e/exponent_adjustment, p);
-        //cout << chi.m << " " << p << " " << k << " " << chi_values[k] << endl;
     }
 
 }
