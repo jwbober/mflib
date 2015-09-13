@@ -650,7 +650,7 @@ void cuspform_basis_weight2_modp(nmod_mat_t basis, int ncoeffs, int level, int& 
     for(int M1 : sublevels) {
         for(int M2 : divisors(level/M1)) {
             for(int l = 0; l < nmod_mat_nrows(bases_for_new_spaces[M1]); l++) {
-                for(int j = 1; j < ncoeffs/M2; j++) {
+                for(int j = 1; j*M2 < ncoeffs; j++) {
                     nmod_mat_entry(basis, r, j * M2) = nmod_mat_entry(bases_for_new_spaces[M1], l, j);
                 }
                 r++;

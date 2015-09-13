@@ -31,6 +31,11 @@ void print_nmod_mat_t(nmod_mat_t M) {
 }
 
 int main(int argc, char ** argv) {
+    if(argc < 6) {
+        const char * usage = "./test-tf level chi p0 ncoeffs extra_rows\n";
+        cout << usage;
+        return 0;
+    }
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
     int p0 = atoi(argv[3]);

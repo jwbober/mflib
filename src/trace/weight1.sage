@@ -8,14 +8,15 @@ def do_q(q):
         if not chi.is_odd():
             continue
         correct_orders = True
-        for psi in chi.decomposition():
-            if is_squarefree(psi.modulus()) and psi.multiplicative_order() not in [2,3,4,5]:
-                correct_orders = False
-                break
-        if not correct_orders:
-            continue
-        command = './weight1 {} {} {}'.format(q, chi.number(), 10000)
+        #for psi in chi.decomposition():
+        #    if is_squarefree(psi.modulus()) and psi.multiplicative_order() not in [2,3,4,5]:
+        #        correct_orders = False
+        #        break
+        #if not correct_orders:
+        #    continue
+        command = './weight1 {} {} {}'.format(q, chi.number(), 0)
         print command
+        sys.stdout.flush()
         #output = subprocess.check_output(command, shell=True)
         #level, character, prime, dimension = output.split()
         #dimension = int(dimension)

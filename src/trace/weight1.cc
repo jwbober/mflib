@@ -21,6 +21,22 @@ using std::endl;
 //    return mat->rows[i][j];
 //}
 
+void print_nmod_mat_t(nmod_mat_t M) {
+    int nrows = nmod_mat_nrows(M);
+    int ncols = nmod_mat_ncols(M);
+    cout << "matrix(Integers(" << M->mod.n << "),[" << endl;
+    for(int i = 0; i < nrows; i++) {
+        cout << " [";
+        for(int j = 0; j < ncols; j++) {
+            cout << nmod_mat_entry(M, i, j);
+            if(j + 1 < ncols) cout << ", ";
+        }
+        cout << "]";
+        if(i + 1 < nrows) cout << ",";
+        cout << endl;
+    }
+    cout << "])" << endl;
+}
 
 void compute_more_eisenstein_coefficients(int number_of_coefficients);
 
@@ -172,10 +188,13 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
 
     int d3 = S2_max_dimension[q3];
     int d4 = S2_max_dimension[q4];
-    int Q = d3 + d4 + 20;
+    int Q = d3 + d4 + 10;
 
-    cuspform_basis_weight2_modp(basis3, Q + 25, q3, p, chi3);
-    cuspform_basis_weight2_modp(basis4, Q + 25, q4, p, chi4);
+    cuspform_basis_weight2_modp(basis3, Q, q3, p, chi3);
+    cuspform_basis_weight2_modp(basis4, Q, q4, p, chi4);
+
+    //print_nmod_mat_t(basis3);
+    //print_nmod_mat_t(basis4);
 
     //cout << q3 << " " << chi3.m << endl;
     //cout << q4 << " " << chi4.m << endl;
@@ -231,6 +250,15 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
     }
 
     int weight2_dimension = d3 + d4 - nmod_mat_rank(M);
+
+    nmod_mat_clear(M);
+    nmod_mat_clear(basis3);
+    nmod_mat_clear(basis4);
+    nmod_poly_clear(f);
+    nmod_poly_clear(g);
+    nmod_poly_clear(E3);
+    nmod_poly_clear(E4);
+
     return weight2_dimension;
 }
 
