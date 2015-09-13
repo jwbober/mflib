@@ -72,8 +72,6 @@ int psi(int N) {
 }
 
 void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int level, DirichletCharacter& chi) {
-    // We expect that p is not 2 or 3.
-
     traces = traces - start; // We adjust the traces pointer so that we
                              // can work with traces[start] through
                              // trace[end-1] instead of subtracting start all
@@ -107,6 +105,8 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
         traces[z*z] += A1 * chi.value(z);    // depends on n at all.
     }
+
+    cout << traces[1] << endl;
 
     // computation of A2
     int t = sqrt(4*end);
@@ -166,6 +166,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
             }
         }
     }
+    cout << traces[1] << endl;
 
     // computation of A3
     for(int d = 1; d*d < end; d++) {            // In A3, we'll get a contribution
@@ -182,6 +183,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
                         a = a + chi.value(y);
                     }
                     else {
+                        // XXX THIS IS WRONG
                         if(GCD(c/g, level/c) == 1) {            // We are doing a CRT lift
                             y = CRT(d, n/d, c/g, level/c);      // here, but the moduli might
                         }                                       // not be coprime. Hence the
@@ -189,6 +191,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
                             y = CRT(d, n/d, c/g, (level/c)/g);
                         }
                         a = a + (complex<double>)euler_phi(g) * chi.value(y);
+                        if(n == 1) cout << "* y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
                     }
                 }
             }
@@ -196,6 +199,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
             traces[n] -=  (complex<double>)d * a;
         }
     }
+    cout << traces[1] << endl;
     
     // computation of A4
     if(chi.m == 1) {
@@ -211,6 +215,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
             }
         }
     }
+    cout << traces[1] << endl;
 
     delete [] psi_table;
     for(int k = 1; k < level + 1; k++) {
@@ -262,6 +267,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
         traces[z*z] += A1 * chi_values[z % level] % p;    // depends on n at all.
     }
 
+    //cout << traces[1] << endl;
 
     // computation of A2
     //cout << "computing A2 for level " << level << endl;
@@ -326,6 +332,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
             }
         }
     }
+    //cout << traces[1] << endl;
 
     //cout << "computing A3 for level " << level << endl;
     // computation of A3
@@ -351,14 +358,20 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
                         a %= p;
                     }
                     else {
-                        if(GCD(c/g, level/c) == 1) {            // We are doing a CRT lift
-                            y = CRT(d, n/d, c/g, level/c);      // here, but the moduli might
-                        }                                       // not be coprime. Hence the
-                        else { // GCD(c, (N/c)/g) == 1          // complication.
-                            y = CRT(d, n/d, c, (level/c)/g);    //
-                        }                                       // XXX: I've got this computation wrong
+                        long g1, u, v;
+                        XGCD(g1, u, v, c, level/c);
+                        y = (d + c * u * (n/d - d)/g1) % (level/g);
+                        if(y < 0) y += (level/g);
+                        //if(GCD(c/g, level/c) == 1) {            // We are doing a CRT lift
+                        //    y = CRT(d, n/d, c/g, level/c);      // here, but the moduli might
+                        //}                                       // not be coprime. Hence the
+                        //else { // GCD(c, (N/c)/g) == 1          // complication.
+                        //    if(n == 1) cout << "here" << d << " " << n/d << " "  << c << " " << (level/c)/g << " " << level << " " << g << endl;
+                        //    y = CRT(d, n/d, c, (level/c)/g);    //
+                        //}                                       // XXX: I've got this computation wrong
                         a = a + euler_phi(g) * chi_values[y];   // a few times. I hope it is right now.
                         a %= p;
+                        //if(n == 1) cout << "y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
                     }
                 }
             }
@@ -368,6 +381,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
             if(traces[n] < 0) traces[n] += p;
         }
     }
+    //cout << traces[1] << endl;
     
     //cout << "computing A4 for level " << level << endl;
     // computation of A4
@@ -385,6 +399,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
             }
         }
     }
+    //cout << traces[1] << endl;
 
     //cout << "cleaning up for level " << level << endl;
     delete [] psi_table;
@@ -425,10 +440,10 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<int> * traces, int star
                                                     // since we'll want this later.
     }                                               
 
-    for(int k = 0; k < sublevels.size(); k++) {
+    for(unsigned int k = 0; k < sublevels.size(); k++) {
         int M = sublevels[k];
         if(M == 1) continue;
-        for(int j = k; j < sublevels.size(); j++) {
+        for(unsigned int j = k; j < sublevels.size(); j++) {
             int N = sublevels[j];
             vector<int> Ndivisors = divisors(N);
             if(N % M != 0) continue;

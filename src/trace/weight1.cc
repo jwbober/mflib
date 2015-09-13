@@ -28,30 +28,30 @@ vector<long> E3Z;
 vector<long> E4Z;
 vector<long> E7Z;
 
-void eisenstein3(nmod_poly_t E3, int degree) {
+void eisenstein3(nmod_poly_t E3, unsigned degree) {
     long mod = nmod_poly_modulus(E3);
     if(degree >= E3Z.size()) {
         compute_more_eisenstein_coefficients(degree + 1);
     }
-    for(int k = 0; k < degree; k++) {
+    for(unsigned int k = 0; k < degree; k++) {
         nmod_poly_set_coeff_ui(E3, k, E3Z[k] % mod);
     }
 }
-void eisenstein4(nmod_poly_t E4, int degree) {
+void eisenstein4(nmod_poly_t E4, unsigned int degree) {
     long mod = nmod_poly_modulus(E4);
     if(degree >= E4Z.size()) {
         compute_more_eisenstein_coefficients(degree + 1);
     }
-    for(int k = 0; k < degree; k++) {
+    for(unsigned int k = 0; k < degree; k++) {
         nmod_poly_set_coeff_ui(E4, k, E4Z[k] % mod);
     }
 }
-void eisenstein7(nmod_poly_t E7, int degree) {
+void eisenstein7(nmod_poly_t E7, unsigned int degree) {
     long mod = nmod_poly_modulus(E7);
     if(degree >= E7Z.size()) {
         compute_more_eisenstein_coefficients(degree + 1);
     }
-    for(int k = 0; k < degree; k++) {
+    for(unsigned int k = 0; k < degree; k++) {
         nmod_poly_set_coeff_ui(E7, k, E7Z[k] % mod);
     }
 }
@@ -174,8 +174,8 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
     int d4 = S2_max_dimension[q4];
     int Q = d3 + d4 + 20;
 
-    cuspform_basis_weight2_modp(basis3, Q + 5, q3, p, chi3);
-    cuspform_basis_weight2_modp(basis4, Q + 5, q4, p, chi4);
+    cuspform_basis_weight2_modp(basis3, Q + 25, q3, p, chi3);
+    cuspform_basis_weight2_modp(basis4, Q + 25, q4, p, chi4);
 
     //cout << q3 << " " << chi3.m << endl;
     //cout << q4 << " " << chi4.m << endl;
@@ -235,6 +235,22 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
 }
 
 int main(int argc, char ** argv) {
+    if(argc < 4) {
+        const char * usage = 
+            "./weight1 level chi p0\n"
+            "\n"
+            "Compute (an upper bound for) the dimension of S_1(level, chi) mod p,\n"
+            "where p is the first prime >= p0 which is 1 mod the order of chi*chi3\n"
+            "and chi*chi4.\n"
+            "\n"
+            "The output has the form\n"
+            "\n"
+            "level chi p dimension\n"
+            "\n"
+            "where p is the prime actually used.\n";
+        cout << usage;
+        return 0;
+    }
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
     int p0 = atoi(argv[3]);

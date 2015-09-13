@@ -68,12 +68,13 @@ int main(int argc, char ** argv) {
         }
     }
     
-    vector<int> * traces = new vector<int>[NN*MM + 1];
+    vector<int> * traces = new vector<int>[level + 1];
 
     for(int M : sublevels) {                                                                      //
         traces[M] = vector<int>(NN*MM + 1);                                                       // We compute the (unsieved) traces
         trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, NN*MM + 1, M, p, chi_values[M], chi); // for each sublevel.
     }                                                                                             //
+
 
     sieve_trace_Tn_modp_on_weight2_for_newspaces(traces, 0, NN*MM + 1, level, p, chi_values, chi);// Then we sieve.
     

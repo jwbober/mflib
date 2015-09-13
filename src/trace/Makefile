@@ -1,8 +1,9 @@
 
 CC = g++
+CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -fpermissive
+CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -fpermissive -Wall
 LDLIBS = -lfftw3 -lflint
 
 OBJECTS = trace-formula.o weight1.o test-tf.o trace-unsieved.o trace-sieved.o trace-TnTm.o
