@@ -3,20 +3,25 @@ from dirichlet_conrey import *
 
 dimensions = {}
 max_level = 0
-for line in open('weight1_dimensions'):
+for line in open('w1-dimensions'):
     q, chi, p, d = line.split()
     q = int(q)
     chi = int(chi)
-    d = int(d)
-    dimensions[(q, chi)] = d
+    if d == '?':
+        dimensions[(q, chi)] = NaN
+    else:
+        d = int(d)
+        dimensions[(q, chi)] = d
     if q > max_level:
         max_level = q
 
 dihedral_dimensions = [0] * 1001
 for line in open('dihedral.txt'):
-    q, something, something_else, blank = line.split(',')
+    q, weight, something_else, blank = line.split(',')
     q = int(q)
-    dihedral_dimensions[q] += 1
+    weight = int(weight)
+    if weight == 1:
+        dihedral_dimensions[q] += 1
 
 total_dimensions = [0] * 1001
 

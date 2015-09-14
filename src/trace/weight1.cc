@@ -128,7 +128,7 @@ void compute_more_eisenstein_coefficients(int number_of_coefficients) {
     }
 }
 
-int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
+int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extra_coeffs) {
     //
     // Compute (an upper bound for?) the dimension of the space of weight 1
     // cusp forms mod p with character chi, where p is an appropriate prime.
@@ -189,15 +189,16 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
     int d3 = S2_max_dimension[q3];
     int d4 = S2_max_dimension[q4];
     int Q = d3 + d4 + 10;
+    Q += extra_coeffs;
 
+    //cout << q3 << " " << chi3.m << endl;
+    //cout << q4 << " " << chi4.m << endl;
     cuspform_basis_weight2_modp(basis3, Q, q3, p, chi3);
     cuspform_basis_weight2_modp(basis4, Q, q4, p, chi4);
 
     //print_nmod_mat_t(basis3);
     //print_nmod_mat_t(basis4);
 
-    //cout << q3 << " " << chi3.m << endl;
-    //cout << q4 << " " << chi4.m << endl;
 
     d3 = nmod_mat_nrows(basis3);
     d4 = nmod_mat_nrows(basis4);
@@ -210,9 +211,9 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
     if(d3 != nmod_mat_rank(basis3) || d4 != nmod_mat_rank(basis4)) {
         cout << "didn't get a matrix of full rank." << endl;
         cout << "d3 = " << d3 << endl;
-        cout << "rank(basis3) = " << nmod_mat_rank(basis3) << endl;
+        cout << "for chi3 = (" << q3 << ", " << chi3.m << ") rank(basis3) = " << nmod_mat_rank(basis3) << endl;
         cout << "d4 = " << d4 << endl;
-        cout << "rank(basis4) = " << nmod_mat_rank(basis4) << endl;
+        cout << "for chi4 = (" << q3 << ", " << chi4.m << ") rank(basis4) = " << nmod_mat_rank(basis4) << endl;
         exit(0);
     }
 
@@ -263,9 +264,9 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p) {
 }
 
 int main(int argc, char ** argv) {
-    if(argc < 4) {
+    if(argc < 2) {
         const char * usage = 
-            "./weight1 level chi p0\n"
+            "./weight1 level [chi] [p0] [extracoeffs]\n"
             "\n"
             "Compute (an upper bound for) the dimension of S_1(level, chi) mod p,\n"
             "where p is the first prime >= p0 which is 1 mod the order of chi*chi3\n"
@@ -275,18 +276,26 @@ int main(int argc, char ** argv) {
             "\n"
             "level chi p dimension\n"
             "\n"
-            "where p is the prime actually used.\n";
+            "where p is the prime actually used. If p0 is 0, or not set we choose\n"
+            "p0 = 10000. If extracoeffs is nonzero, we that many more coefficients\n"
+            "than we normally would. If chi is zero, or unset, we comput this\n"
+            "dimension for every chi mod level.\n";
         cout << usage;
         return 0;
     }
     int level = atoi(argv[1]);
-    int chi_number = atoi(argv[2]);
-    int p0 = atoi(argv[3]);
+    int chi_number = 0;
+    int p0 = 0;
+    int extra_coeffs = 0;
+    if(argc > 2) chi_number = atoi(argv[2]);
+    if(argc > 3) p0 = atoi(argv[3]);
+    if(argc > 4) extra_coeffs = atoi(argv[4]);
+
     DirichletGroup G(level);
     if(chi_number != 0) {
         int p = p0;
         DirichletCharacter chi = G.character(chi_number);
-        int bound = weight1_dimension_bound(level, chi, p);
+        int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
         cout << level << " " << chi_number << " " << p << " " << bound << endl;
     }
     else {
@@ -294,7 +303,7 @@ int main(int argc, char ** argv) {
             if(GCD(k, level) != 1) continue;
             DirichletCharacter chi = G.character(k);
             int p = p0;
-            int bound = weight1_dimension_bound(level, chi, p);
+            int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
             cout << level << " " << k << " " << p << " " << bound << endl;
         }
     }

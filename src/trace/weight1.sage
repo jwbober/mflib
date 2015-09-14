@@ -1,6 +1,7 @@
 import sys
 import subprocess
 from dirichlet_conrey import *
+prime = sys.argv[3]
 def do_q(q):
     G = DirichletGroup_conrey(q)
     for orbit in G.galois_orbits():
@@ -14,7 +15,7 @@ def do_q(q):
         #        break
         #if not correct_orders:
         #    continue
-        command = './weight1 {} {} {}'.format(q, chi.number(), 0)
+        command = './weight1 {} {} {}'.format(q, chi.number(), prime)
         print command
         sys.stdout.flush()
         #output = subprocess.check_output(command, shell=True)
@@ -26,6 +27,7 @@ def do_q(q):
 
 if __name__ == "__main__":
     import sys
-    start, end = [int(x) for x in sys.argv[1:]]
+    start = int(sys.argv[1])
+    end = int(sys.argv[2])
     for q in range(start, end):
         do_q(q)
