@@ -209,12 +209,14 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extr
     //Q = d3 + d4 + 10;
 
     if(d3 != nmod_mat_rank(basis3) || d4 != nmod_mat_rank(basis4)) {
-        cout << "didn't get a matrix of full rank." << endl;
-        cout << "d3 = " << d3 << endl;
-        cout << "for chi3 = (" << q3 << ", " << chi3.m << ") rank(basis3) = " << nmod_mat_rank(basis3) << endl;
-        cout << "d4 = " << d4 << endl;
-        cout << "for chi4 = (" << q3 << ", " << chi4.m << ") rank(basis4) = " << nmod_mat_rank(basis4) << endl;
-        exit(0);
+        cerr << "didn't get a matrix of full rank." << endl;
+        cerr << "d3 = " << d3 << endl;
+        cerr << "for chi3 = (" << q3 << ", " << chi3.m << ") rank(basis3) = " << nmod_mat_rank(basis3) << endl;
+        cerr << "d4 = " << d4 << endl;
+        cerr << "for chi4 = (" << q3 << ", " << chi4.m << ") rank(basis4) = " << nmod_mat_rank(basis4) << endl;
+        nmod_mat_clear(basis3);
+        nmod_mat_clear(basis4);
+        return -1;
     }
 
     nmod_poly_t E3;  nmod_poly_init(E3, p);
@@ -296,7 +298,10 @@ int main(int argc, char ** argv) {
         int p = p0;
         DirichletCharacter chi = G.character(chi_number);
         int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
-        cout << level << " " << chi_number << " " << p << " " << bound << endl;
+        if(bound < 0)
+            cout << level << " " << chi_number << " " << p << " " << '?' << endl;
+        else
+            cout << level << " " << chi_number << " " << p << " " << bound << endl;
     }
     else {
         for(int k = 1; k < level; k++) {
@@ -304,7 +309,10 @@ int main(int argc, char ** argv) {
             DirichletCharacter chi = G.character(k);
             int p = p0;
             int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
-            cout << level << " " << k << " " << p << " " << bound << endl;
+            if(bound < 0)
+                cout << level << " " << chi_number << " " << p << " " << '?' << endl;
+            else
+                cout << level << " " << chi_number << " " << p << " " << bound << endl;
         }
     }
     return 0;
