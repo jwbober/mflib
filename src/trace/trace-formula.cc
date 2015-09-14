@@ -467,7 +467,10 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<int> * traces, int star
                     for(int b : divisors(y)) {
                         if(b == 1 && N == M) continue;
                         if(n % (b*b) == 0) {
-                            traces[N][n] -= divisor_counts[x] * chi_values[q][b % q] * mobius(b) * b * traces[M][n/(b*b)];
+                            traces[N][n] -=
+                                ((divisor_counts[x] * chi_values[q][b % q]) % p)
+                                * mobius(b)
+                                * (b * traces[M][n/(b*b)] % p);
                             traces[N][n] %= p;
                             if(traces[N][n] < 0) traces[N][n] += p;
                             /*
