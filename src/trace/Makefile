@@ -2,7 +2,6 @@ CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-BIN = $(ROOT)/bin
 CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -fpermissive -Wall
 LDLIBS = -lfftw3 -lflint
 
@@ -22,6 +21,10 @@ EXECUTABLES = weight1 \
 	      write-classnumbers
 
 all: $(EXECUTABLES)
+
+BIN=$(HOME)/bin
+links: $(EXECUTABLES)
+	ln -f -s $(realpath $(EXECUTABLES)) $(BIN)/
 
 $(OBJECTS): $(INCLUDE)/characters.h $(INCLUDE)/slint.h trace-formula.h
 

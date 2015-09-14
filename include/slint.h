@@ -626,7 +626,7 @@ struct int_factorization_t {
 };
 
 static void factor(int n, int_factorization_t &factorization) {
-    const int max_table_size = 10000000;
+    const int max_table_size = 100000000;
     int sign = 1;
     if(n < 0) {sign = -1; n = -n;}
     if(n >= factor_table_size) {
