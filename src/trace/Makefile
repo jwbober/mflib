@@ -11,14 +11,12 @@ OBJECTS = trace-formula.o \
 	  trace-unsieved.o \
 	  trace-sieved.o \
 	  trace-TnTm.o \
-	  write-classnumbers.o
 
 EXECUTABLES = weight1 \
 	      test-tf \
 	      trace-unsieved \
 	      trace-sieved \
 	      trace-TnTm \
-	      write-classnumbers
 
 all: $(EXECUTABLES)
 
@@ -41,3 +39,5 @@ trace-TnTm: trace-formula.o trace-TnTm.o
 clean:
 	-rm $(OBJECTS)
 	-rm $(EXECUTABLES)
+	-rm write-classnumbers
+	-rm write-classnumbers.o
