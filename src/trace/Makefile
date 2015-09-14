@@ -1,18 +1,33 @@
-
 CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
+BIN = $(ROOT)/bin
 CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -fpermissive -Wall
 LDLIBS = -lfftw3 -lflint
 
-OBJECTS = trace-formula.o weight1.o test-tf.o trace-unsieved.o trace-sieved.o trace-TnTm.o
-EXECUTABLES = weight1 test-tf trace-unsieved trace-sieved trace-TnTm
+OBJECTS = trace-formula.o \
+	  weight1.o \
+	  test-tf.o \
+	  trace-unsieved.o \
+	  trace-sieved.o \
+	  trace-TnTm.o \
+	  write-classnumbers.o
+
+EXECUTABLES = weight1 \
+	      test-tf \
+	      trace-unsieved \
+	      trace-sieved \
+	      trace-TnTm \
+	      write-classnumbers
 
 all: $(EXECUTABLES)
 
 $(OBJECTS): $(INCLUDE)/characters.h $(INCLUDE)/slint.h trace-formula.h
 
+write-classnumbers.o: write-classnumbers.cc
+write-classnumbers: write-classnumbers.o
+	g++ -o write-classnumbers write-classnumbers.o -lpari
 
 weight1: trace-formula.o weight1.o
 test-tf: trace-formula.o test-tf.o
