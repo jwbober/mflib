@@ -142,6 +142,11 @@ static long GCD(long a, long b)
    return x;
 }
 
+long LCM(long a, long b) {
+    long g = GCD(a, b);
+    return a * (b/g);
+}
+
 static long euler_phi(long n) {
     // yes, this is stupidly slow...
     //

@@ -6,6 +6,7 @@
 #include <complex>
 #include <cmath>
 #include <vector>
+#include <set>
 #include <fftw3.h>
 
 #ifdef USE_MPFI
@@ -42,6 +43,7 @@ public:
     long conductor(long * index = NULL);
     std::complex<double> gauss_sum();
     void values_mod_p(int &p, int * chi_values);
+    std::set<long> galois_orbit();
 };
 
 
@@ -1009,4 +1011,24 @@ inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
 
 }
 
+std::set<long> DirichletCharacter::galois_orbit() {
+    std::set<long> orbit;
+    long z = 1;
+    for(int l = 0; l < parent->k; l++) {
+        long p = parent->primes->at(l);
+        long e = parent->exponents->at(l);
+        z = LCM(z, (p - 1)*ipow(p, e - 1));
+    }
+    if(parent->q_even > 1) {
+        z = LCM(z, parent->q_even/2);
+    }
+
+    for(int a = 1; a < z; a++) {
+        if(GCD(a,z) == 1) {
+            orbit.insert(PowerMod(m, a, parent->q));
+        }
+    }
+
+    return orbit;
+}
 #endif
