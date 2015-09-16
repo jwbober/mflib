@@ -20,7 +20,7 @@ using std::vector;
 using std::complex;
 
 
-// 
+//
 // Uncomment for range checking on nmod_mat_t accesses.
 //
 //#undef nmod_mat_entry
@@ -596,6 +596,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
             //cerr << ". Used first " << new_dimension << " rows." << endl;
         }
 
+        int compute_more_count = 0;
         if(nmod_mat_rank(bases[M]) < new_dimension) {
             nmod_mat_zero(bases[M]);
             int rank = 0;
@@ -623,6 +624,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
                     }
                     sieve_trace_Tn_modp_on_weight2_for_newspaces(traces, max_trace + 1, max_trace_needed_next + 1, level, p, chi_values, chi);
                     max_trace = max_trace_needed_next;
+                    compute_more_count++;
                 }
 
                 for(int n = 1; n < ncoeffs; n++) {
@@ -638,6 +640,10 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
                     j++;
                 }
                 m++;
+                if(compute_more_count > 100) {
+                    cerr << "Giving up on finding full rank." << endl;
+                    j = nrows;
+                }
             }
         }
     }
