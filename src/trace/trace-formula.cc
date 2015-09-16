@@ -277,9 +277,18 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
     // computation of A2
     //cout << "computing A2 for level " << level << endl;
     
+    if(verbose > 0) cerr << "A2:";
     int t = sqrt(4*end);
     if(t*t == 4*end) t--;
     for(t = -t; (long)t*t < 4l*end; t++) {
+        if(verbose > 0) {
+            long print_interval = round(2 * sqrt(4*end)/70);
+            print_interval = max(print_interval, 1l);
+            if(t % print_interval == 0) {
+                cerr << '.';
+                cerr.flush();
+            }
+        }
         for(int x = 0; x < level; x++) {
             int chi = chi_values[x];
             if(chi == 0) continue;
@@ -337,20 +346,28 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
             }
         }
     }
+    if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
 
-    //cout << "computing A3 for level " << level << endl;
-    // computation of A3
-    for(int d = 1; d*d < end; d++) {            // In A3, we'll get a contribution
+    if(verbose > 0) { cerr << "A3:"; }
+    for(int d = 1; d*d < end; d++) {
+        if(verbose > 0) {
+            long print_interval = round(sqrt(end)/70);
+            print_interval = max(print_interval, 1l);
+            if(d % print_interval == 0) {
+                cerr << '.';
+                cerr.flush();
+            }
+        }
         int starting_n = start;
         if(d*d > starting_n) {
             starting_n = d*d;
         }
         else if(starting_n % d != 0) {
             starting_n += (d - starting_n % d);
-        }
+        }                                              // In A3, we'll get a contribution
         for(int n = starting_n; n < end; n += d) {     // to traces[n] for each d that divides n
-            int a = 0;                          // as long as d^2 <= n
+            int a = 0;                                 // as long as d^2 <= n
             for(int c : divisors_of_level) {
                 int z = (n/d - d) % (level/conductor);
                 if(z < 0) z += (level/conductor);
@@ -386,6 +403,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
             if(traces[n] < 0) traces[n] += p;
         }
     }
+    if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
     
     //cout << "computing A4 for level " << level << endl;
@@ -569,7 +587,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
         if(verbose > 0)
             cerr << "Computing " << max_trace << " traces of Tn on " << " S_2(" << M << ", chi)." << endl;
         traces[M] = vector<int>(max_trace + 1);                                                         // We compute the (unsieved) traces
-        trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, max_trace + 1, M, p, chi_values[M], chi);   // for each sublevel.
+        trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, max_trace + 1, M, p, chi_values[M], chi, verbose);   // for each sublevel.
     }                                                                                                   //
 
     if(verbose > 0) cerr << "Sieving..." << endl;

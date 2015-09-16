@@ -1011,7 +1011,7 @@ inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
 
 }
 
-std::set<long> DirichletCharacter::galois_orbit() {
+inline std::set<long> DirichletCharacter::galois_orbit() {
     std::set<long> orbit;
     long z = 1;
     for(int l = 0; l < parent->k; l++) {
