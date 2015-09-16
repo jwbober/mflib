@@ -17,22 +17,22 @@ void trace_Tn_unsieved_weight2(
         int verbose = 0);
 
 void trace_Tn_modp_unsieved_weight2(
-        int * traces,
+        long * traces,
         int start,
         int end,
         int level,
-        int p,
-        int * chi_values,
+        long p,
+        long * chi_values,
         DirichletCharacter& chi,
         int verbose = 0);
 
 void sieve_trace_Tn_modp_on_weight2_for_newspaces(
-        std::vector<int> * traces,
+        std::vector<long> * traces,
         int start,
         int end,
         int level,
-        int p,
-        int ** chi_values,
+        long p,
+        long ** chi_values,
         DirichletCharacter& chi,
         int verbose = 0);
 
@@ -40,7 +40,7 @@ int newspace_bases_weight2_modp(
         nmod_mat_t * bases,
         int& ncoeffs,
         int level,
-        int& p,
+        long& p,
         DirichletCharacter& chi,
         int extra_rows = 0,
         int verbose = 0);
@@ -49,17 +49,17 @@ void cuspform_basis_weight2_modp(
         nmod_mat_t basis,
         int ncoeffs,
         int level,
-        int& p,
+        long& p,
         DirichletCharacter& chi,
         int verbose = 0);
 
 int trace_TmTn_mod_p(
-        int * traces,
-        int * chi_values,
+        long * traces,
+        long * chi_values,
         int k,
         int level,
         int m,
         int n,
-        int p);
+        long p);
 
 #endif

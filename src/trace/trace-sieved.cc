@@ -32,7 +32,7 @@ void print_nmod_mat_t(nmod_mat_t M) {
 int main(int argc, char ** argv) {
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
-    int p = atoi(argv[3]);
+    long p = atol(argv[3]);
     int start = atoi(argv[4]);
     int end = atoi(argv[5]);
 
@@ -45,7 +45,7 @@ int main(int argc, char ** argv) {
 
     long primitive_index;
     int q = chi.conductor(&primitive_index);
-    int ** chi_values = new int*[level + 1];
+    long ** chi_values = new long*[level + 1];
 
     vector<int> sublevels;                     // 
     for(int M : divisors(level)) {             // We fill sublevels with all of the M such that 
@@ -53,15 +53,15 @@ int main(int argc, char ** argv) {
             if(M > 1) sublevels.push_back(M);  //
             DirichletGroup G(M);
             DirichletCharacter psi = G.character(G.index_from_primitive_character(q, primitive_index));
-            chi_values[M] = new int[M];
+            chi_values[M] = new long[M];
             psi.values_mod_p(p, chi_values[M]);
         }
     }
     
-    vector<int> * traces = new vector<int>[level + 1];
+    vector<long> * traces = new vector<long>[level + 1];
 
     for(int M : sublevels) {                                                                            //
-        traces[M] = vector<int>(end + 1);                                                         // We compute the (unsieved) traces
+        traces[M] = vector<long>(end + 1);                                                         // We compute the (unsieved) traces
         trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, end + 1, M, p, chi_values[M], chi);   // for each sublevel.
     }                                                                                                   //
 

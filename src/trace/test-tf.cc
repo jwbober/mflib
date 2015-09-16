@@ -38,7 +38,7 @@ int main(int argc, char ** argv) {
     }
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
-    int p0 = atoi(argv[3]);
+    long p0 = atol(argv[3]);
     int ncoeffs = atoi(argv[4]);
     int extra_rows = atoi(argv[5]);
     DirichletGroup G(level);

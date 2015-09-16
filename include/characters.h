@@ -42,7 +42,7 @@ public:
     void primitive_part_at_known_p(long * index, long * conductor, long j);
     long conductor(long * index = NULL);
     std::complex<double> gauss_sum();
-    void values_mod_p(int &p, int * chi_values);
+    void values_mod_p(long &p, long * chi_values);
     std::set<long> galois_orbit();
 };
 
@@ -958,7 +958,7 @@ inline long DirichletCharacter::conductor(long * index) {
     return q0;
 }
 
-inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
+inline void DirichletCharacter::values_mod_p(long & p, long * chi_values) {
     //
     // Given a prime p such that the order of chi divides p - 1, fill the array
     // chi_values with values of this character mod p.
@@ -990,7 +990,7 @@ inline void DirichletCharacter::values_mod_p(int & p, int * chi_values) {
 
         exit(1);
     }
-    int g = primitive_root(p);
+    long g = primitive_root(p);
     int exponent_adjustment = phi_q/order;
     g = PowerMod(g, (p-1)/order, p);
 

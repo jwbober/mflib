@@ -128,7 +128,7 @@ void compute_more_eisenstein_coefficients(int number_of_coefficients) {
     }
 }
 
-int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extra_coeffs, int verbose) {
+int weight1_dimension_bound(int level, DirichletCharacter& chi, long& p, int extra_coeffs, int verbose) {
     //
     // Compute (an upper bound for?) the dimension of the space of weight 1
     // cusp forms mod p with character chi, where p is an appropriate prime.
@@ -287,17 +287,17 @@ int main(int argc, char ** argv) {
     }
     int level = atoi(argv[1]);
     int chi_number = 0;
-    int p0 = 0;
+    long p0 = 0;
     int extra_coeffs = 0;
     int verbose = 0;
     if(argc > 2) chi_number = atoi(argv[2]);
-    if(argc > 3) p0 = atoi(argv[3]);
+    if(argc > 3) p0 = atol(argv[3]);
     if(argc > 4) extra_coeffs = atoi(argv[4]);
     if(argc > 5) verbose = atoi(argv[5]);
 
     DirichletGroup G(level);
     if(chi_number != 0) {
-        int p = p0;
+        long p = p0;
         DirichletCharacter chi = G.character(chi_number);
         int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
         if(bound < 0)
@@ -309,7 +309,7 @@ int main(int argc, char ** argv) {
         for(int k = 1; k < level; k++) {
             if(GCD(k, level) != 1) continue;
             DirichletCharacter chi = G.character(k);
-            int p = p0;
+            long p = p0;
             int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
             if(bound < 0)
                 cout << level << " " << chi_number << " " << p << " " << '?' << endl;

@@ -42,16 +42,16 @@ int main(int argc, char ** argv) {
     }
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
-    int p0 = atoi(argv[3]);
+    long p0 = atol(argv[3]);
     int start = atoi(argv[4]);
     int end = atoi(argv[5]);
 
     DirichletGroup G(level);
     DirichletCharacter chi = G.character(chi_number);
 
-    int * traces = new int[end - start];
+    long * traces = new long[end - start];
     complex<double> * ztraces = new complex<double>[end - start];
-    int * chi_values = new int[level];
+    long * chi_values = new long[level];
     chi.values_mod_p(p0, chi_values);
     //for(int k = 0; k < level; k++) {
     //    cout << k << " " << chi_values[k] << " " << chi.value(k) << endl;
