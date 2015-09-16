@@ -20,20 +20,25 @@ using std::vector;
 using std::complex;
 
 
+// 
+// Uncomment for range checking on nmod_mat_t accesses.
+//
 //#undef nmod_mat_entry
+//
 //static mp_limb_t& nmod_mat_entry(nmod_mat_t mat, int i, int j) {
 //    if(i >= mat->r) { cout << "nmod_mat_entry() called with i out of range."; exit(0); }
 //    if(j >= mat->c) { cout << "nmod_mat_entry() called with j out of range."; exit(0); }
 //    return mat->rows[i][j];
 //}
 
-int trace_TmTn_mod_p(int * traces,
-                     int * chi_values,
-                     int k,
-                     int level,
-                     int m,
-                     int n,
-                     int p) {
+int trace_TmTn_mod_p(
+        int * traces,
+        int * chi_values,
+        int k,
+        int level,
+        int m,
+        int n,
+        int p) {
     //
     // Return the trace mod p of TmTn acting on S_k(chi).
     //
@@ -71,7 +76,7 @@ int psi(int N) {
     return PSI;
 }
 
-void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int level, DirichletCharacter& chi) {
+void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int level, DirichletCharacter& chi, int verbose) {
     traces = traces - start; // We adjust the traces pointer so that we
                              // can work with traces[start] through
                              // trace[end-1] instead of subtracting start all
@@ -226,7 +231,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
     delete [] gcd_tables;
 }
 
-void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level, int p, int * chi_values, DirichletCharacter& chi) {
+void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level, int p, int * chi_values, DirichletCharacter& chi, int verbose) {
     // We expect that p is not 2 or 3.
 
     traces = traces - start; // We adjust the traces pointer so that we
@@ -411,7 +416,7 @@ void trace_Tn_modp_unsieved_weight2(int * traces, int start, int end, int level,
     delete [] gcd_tables;
 }
 
-void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<int> * traces, int start, int end, int level, int p, int ** chi_values, DirichletCharacter& chi) {
+void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<int> * traces, int start, int end, int level, int p, int ** chi_values, DirichletCharacter& chi, int verbose) {
     //
     // On input, we should have:
     //  - level is the (maximum) level that we are after
@@ -509,7 +514,7 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<int> * traces, int star
     delete [] divisor_counts;
 }
 
-int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int& p, DirichletCharacter& chi, int extra_rows) {
+int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int& p, DirichletCharacter& chi, int extra_rows, int verbose) {
     //
     // Compute ncoeffs coefficients of bases for S^new_2(M, chi) for all M with q | M | level,
     // and put these in bases[M].
@@ -517,6 +522,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
     // Through a quirk of convenience, we also return the dimension of
     // S_2(level, chi).
     //
+
     if(!chi.is_even()) {                                            // 
         int q = chi.conductor();                                    // 
         for(int M : divisors(level)) {                              // We do something somewhat sensible if
@@ -529,6 +535,9 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
     int q = chi.conductor(&primitive_index);
     int ** chi_values = new int*[level + 1];
 
+    if(verbose > 0) {
+        cerr << "Computing bases of" << endl;
+    }
     vector<int> sublevels;                     // 
     for(int M : divisors(level)) {             // We fill sublevels with all of the M such that 
         if(M % q == 0) {                       // q | M | level.
@@ -537,9 +546,12 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
             DirichletCharacter psi = G.character(G.index_from_primitive_character(q, primitive_index));
             chi_values[M] = new int[M];
             psi.values_mod_p(p, chi_values[M]);
-        }                                           
-    } 
-    
+            if(verbose > 0) {
+                cerr << "    " << "S_2^new(" << M << ", " << psi.m << ") mod " << p << endl;
+            }
+        }
+    }
+
     int cuspform_dimension;
     trace_Tn_modp_unsieved_weight2(&cuspform_dimension, 1, 2, level, p, chi_values[level], chi);  // XXX
                                                                             // I'm assuming that the chosen prime
@@ -553,13 +565,17 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
     
     vector<int> * traces = new vector<int>[level + 1];
 
-    for(int M : sublevels) {                                                                            //
+    for(int M : sublevels) {
+        if(verbose > 0)
+            cerr << "Computing " << max_trace << " traces of Tn on " << " S_2(" << M << ", chi)." << endl;
         traces[M] = vector<int>(max_trace + 1);                                                         // We compute the (unsieved) traces
         trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, max_trace + 1, M, p, chi_values[M], chi);   // for each sublevel.
     }                                                                                                   //
 
+    if(verbose > 0) cerr << "Sieving..." << endl;
     sieve_trace_Tn_modp_on_weight2_for_newspaces(traces, 0, max_trace + 1, level, p, chi_values, chi);  // Then we sieve.
 
+    if(verbose > 0) cerr << "And computing bases..." << endl;
     for(int M : sublevels) {                                                // And now that we have the traces on the
         int new_dimension = traces[M][1];                                   // new subspace we can actually start writing
         int nrows = new_dimension + extra_rows;                             // down bases.
@@ -636,9 +652,9 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, int
     return cuspform_dimension;
 }
 
-void cuspform_basis_weight2_modp(nmod_mat_t basis, int ncoeffs, int level, int& p, DirichletCharacter& chi) {
+void cuspform_basis_weight2_modp(nmod_mat_t basis, int ncoeffs, int level, int& p, DirichletCharacter& chi, int verbose) {
     nmod_mat_t * bases_for_new_spaces = new nmod_mat_t[level + 1];
-    int cuspform_dimension = newspace_bases_weight2_modp(bases_for_new_spaces, ncoeffs, level, p, chi);
+    int cuspform_dimension = newspace_bases_weight2_modp(bases_for_new_spaces, ncoeffs, level, p, chi, 0, verbose);
     nmod_mat_init(basis, cuspform_dimension, ncoeffs, p);
 
     int q = chi.conductor();
@@ -665,32 +681,3 @@ void cuspform_basis_weight2_modp(nmod_mat_t basis, int ncoeffs, int level, int& 
     }
     delete [] bases_for_new_spaces;
 }
-
-/*
-int main(int argc, char ** argv) {
-    int level = atoi(argv[1]);
-    int character = atoi(argv[2]);
-    //int start = atoi(argv[3]);
-    //int end = atoi(argv[4]);
-
-    //build_factor_table(4*max(level, end) + 1);
-    build_factor_table(2000000);
-
-    int p = 0;
-    int * chi_values = new int[level];
-    DirichletGroup G(level);
-    DirichletCharacter chi = G.character(character);
-
-    nmod_mat_t basis;
-    cuspform_basis_weight2_modp(basis, 0, level, p, chi);
-    
-    //nmod_mat_t * bases = new nmod_mat_t[level + 1];
-    //newspace_bases_weight2_modp(bases, 0, level, p, chi);
-    //int * traces = new int[11];
-    //chi.values_mod_p(p, chi_values);
-    //trace_Tn_modp_unsieved_weight2(traces, 0, 10, level, p, chi_values, chi);
-    //for(int k = 0; k < 10; k++) cout << traces[k] << " ";
-    //cout << endl;
-    return 0;
-}
-*/

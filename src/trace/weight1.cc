@@ -128,7 +128,7 @@ void compute_more_eisenstein_coefficients(int number_of_coefficients) {
     }
 }
 
-int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extra_coeffs) {
+int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extra_coeffs, int verbose) {
     //
     // Compute (an upper bound for?) the dimension of the space of weight 1
     // cusp forms mod p with character chi, where p is an appropriate prime.
@@ -193,8 +193,8 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extr
 
     //cout << q3 << " " << chi3.m << endl;
     //cout << q4 << " " << chi4.m << endl;
-    cuspform_basis_weight2_modp(basis3, Q, q3, p, chi3);
-    cuspform_basis_weight2_modp(basis4, Q, q4, p, chi4);
+    cuspform_basis_weight2_modp(basis3, Q, q3, p, chi3, verbose);
+    cuspform_basis_weight2_modp(basis4, Q, q4, p, chi4, verbose);
 
     //print_nmod_mat_t(basis3);
     //print_nmod_mat_t(basis4);
@@ -268,7 +268,7 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, int& p, int extr
 int main(int argc, char ** argv) {
     if(argc < 2) {
         const char * usage = 
-            "./weight1 level [chi] [p0] [extracoeffs]\n"
+            "./weight1 level [chi] [p0] [extracoeffs] [verbose]\n"
             "\n"
             "Compute (an upper bound for) the dimension of S_1(level, chi) mod p,\n"
             "where p is the first prime >= p0 which is 1 mod the order of chi*chi3\n"
@@ -289,15 +289,17 @@ int main(int argc, char ** argv) {
     int chi_number = 0;
     int p0 = 0;
     int extra_coeffs = 0;
+    int verbose = 0;
     if(argc > 2) chi_number = atoi(argv[2]);
     if(argc > 3) p0 = atoi(argv[3]);
     if(argc > 4) extra_coeffs = atoi(argv[4]);
+    if(argc > 5) verbose = atoi(argv[5]);
 
     DirichletGroup G(level);
     if(chi_number != 0) {
         int p = p0;
         DirichletCharacter chi = G.character(chi_number);
-        int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
+        int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
         if(bound < 0)
             cout << level << " " << chi_number << " " << p << " " << '?' << endl;
         else
@@ -308,7 +310,7 @@ int main(int argc, char ** argv) {
             if(GCD(k, level) != 1) continue;
             DirichletCharacter chi = G.character(k);
             int p = p0;
-            int bound = weight1_dimension_bound(level, chi, p, extra_coeffs);
+            int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
             if(bound < 0)
                 cout << level << " " << chi_number << " " << p << " " << '?' << endl;
             else
