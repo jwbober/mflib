@@ -53,7 +53,7 @@ void cuspform_basis_weight2_modp(
         DirichletCharacter& chi,
         int verbose = 0);
 
-int trace_TmTn_mod_p(
+long trace_TmTn_mod_p(
         long * traces,
         long * chi_values,
         int k,

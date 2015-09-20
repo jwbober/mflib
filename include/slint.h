@@ -265,6 +265,12 @@ static long primitive_root(long n) {
         return 1;
     if(n == 4)
         return 3;
+    if(n == 40487) return 10;
+#ifdef FLINT_VERSION
+    if(n_is_prime(n)) {
+        return n_primitive_root_prime(n);
+    }
+#endif
     std::vector<long> prime_factors;
     factors(n, &prime_factors, NULL);
     if(prime_factors.size() > 1)
@@ -344,6 +350,9 @@ static bool MR_test(long n, long a) {
 }
 
 static bool is_prime(long q) {
+#ifdef FLINT_VERSION
+    return n_is_prime(q);
+#else
     if(q == 2 || q == 7 || q == 61) return true;
     if(q < 4759123141l) {
         return MR_test(q,2) && MR_test(q,7) && MR_test(q,61);
@@ -358,6 +367,7 @@ static bool is_prime(long q) {
         else
             return false;
     }
+#endif
 }
 
 static long next_prime(long n) {

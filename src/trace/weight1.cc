@@ -179,7 +179,7 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, long& p, int ext
         }
     }
     int phiN = euler_phi(level);
-    while(!is_prime(p) || phiN % p == 0) p += order; // can p divide phi(N)?...
+    while(!n_is_prime(p) || phiN % p == 0) p += order; // can p divide phi(N)?...
                                                       // not going to think about
                                                       // that right now.
 
