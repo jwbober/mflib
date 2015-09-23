@@ -31,7 +31,7 @@ using std::complex;
 //    return mat->rows[i][j];
 //}
 
-int trace_TmTn_mod_p(
+long trace_TmTn_mod_p(
         long * traces,
         long * chi_values,
         int k,
@@ -43,17 +43,23 @@ int trace_TmTn_mod_p(
     // Return the trace mod p of TmTn acting on S_k(chi).
     //
 
+    nmod_t modp;            // we really should pass an
+    nmod_init(&modp, p);    // nmod_t to this function.
     int g = GCD(m,n);
-    int TnTm = 0;
+    long TnTm = 0;
 
     for(int d = 1; d <= g; d++) {
         if(g % d != 0) continue; // this is silly, but this will usually
                                  // be a short sum
         if(GCD(d,level) != 1) continue;
         
-        long dk = PowerMod(d, k-1, p);
-        TnTm += ((traces[m/d * n/d] * dk) % p) * chi_values[d % level] % p;
-        TnTm %= p;
+        //long dk = PowerMod(d, k-1, p);
+        long dk = nmod_pow_ui(d, k - 1, modp);
+        long z = nmod_mul(traces[m/d * n/d], dk, modp);
+        z = nmod_mul(z, chi_values[d % level], modp);
+        TnTm = nmod_add(TnTm, z, modp);
+        //TnTm += ((traces[m/d * n/d] * dk) % p) * chi_values[d % level] % p;
+        //TnTm %= p;
     }
     return TnTm;
 }
@@ -239,12 +245,15 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
                              // trace[end-1] instead of subtracting start all
                              // the time.
 
-    int one_over_twelve = InvMod(12, p);
-    int one_over_three = InvMod(3, p);
-    int one_over_two = InvMod(2, p);
+    nmod_t modp;
+    nmod_init(&modp, p);
+    long one_over_twelve = nmod_inv(12, modp);
+    long one_over_three = nmod_inv(3, modp);
+    long one_over_two = nmod_inv(2, modp);
 
     int ** gcd_tables = new int*[level + 1];
     int * psi_table = new int[level + 1];
+    int * phi_table = new int[level + 1];
 
     for(int k = 1; k < level + 1; k++) {
         if(level % k == 0) {
@@ -253,6 +262,7 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
             for(int j = 0; j < k; j++) {
                 gcd_tables[k][j] = GCD(k,j);
             }
+            phi_table[k] = euler_phi(k) % p;
         }
     }
 
@@ -265,32 +275,30 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
         traces[n] = 0;
     }
 
-    int A1 = ((psi_table[level] % p) * one_over_twelve) % p;
+    long A1 = nmod_mul(psi_table[level], one_over_twelve, modp);
     int z = (int)sqrt(start);                               //
     while(z*z < start) z++;                                 // A1 is only nonzero when n is a square,
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
-        traces[z*z] += A1 * chi_values[z % level] % p;    // depends on n at all.
+        //traces[z*z] += A1 * chi_values[z % level] % p;    // depends on n at all.
+        NMOD_ADDMUL(traces[z*z], A1, chi_values[z % level], modp); // traces[z*z] += A1 * chi(z) mod p
     }
 
     //cout << traces[1] << endl;
-
     // computation of A2
     //cout << "computing A2 for level " << level << endl;
     
-    if(verbose > 0) cerr << "A2:";
+    long print_interval = 0;
+    if(verbose > 0) { cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = max(print_interval, 1l); }
+
     int t = sqrt(4*end);
     if(t*t == 4*end) t--;
     for(t = -t; (long)t*t < 4l*end; t++) {
-        if(verbose > 0) {
-            long print_interval = round(2 * sqrt(4*end)/70);
-            print_interval = max(print_interval, 1l);
-            if(t % print_interval == 0) {
-                cerr << '.';
-                cerr.flush();
-            }
+        if(verbose > 0 && t % print_interval == 0)  {
+            cerr << '.';
+            cerr.flush();
         }
         for(int x = 0; x < level; x++) {
-            int chi = chi_values[x];
+            long chi = chi_values[x];
             if(chi == 0) continue;
             // These values of x and t will contribute to those n for
             // which the level divides x^2 - tx + n.
@@ -320,13 +328,15 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
                 do {                                                            // (But we don't directly compute it that way.)
                     if( (4l*n - (long)t*t)/((long)f*f) % 4 == 0 || (4l*n - (long)t*t)/((long)f*f) % 4 == 3) {
                         int g = gcd_tables[level][f % level];
-                        if( (x*x - t*x + n) % (g * level) == 0) {
-                            int z = (long)psi_table[level]/psi_table[level/g] * (long)chi * (long)classnumbers[D/(f*f)] % p;
-                            if(D/(f*f) == 3) z = (z * one_over_three) % p;
-                            if(D/(f*f) == 4) z = (z * one_over_two) % p;
-                            traces[n] -= (z * one_over_two) % p;
-                            traces[n] %= p;
-                            if(traces[n] < 0) traces[n] += p;
+                        if( ((long)x*x - t*x + n) % (g * level) == 0) {
+                            long z = psi_table[level]/psi_table[level/g];
+                            if(z >= p) z %= p;
+                            z = nmod_mul(z, chi, modp);
+                            z = nmod_mul(z, classnumbers[D/(f*f)], modp);
+                            if(D/(f*f) == 3) z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
+                            if(D/(f*f) == 4) z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
+                            z = nmod_mul(z, one_over_two, modp);
+                            traces[n] = nmod_sub(traces[n], z, modp);
                         }
                     }
                     int j = 0;                                                  // This bit is a bit messy.
@@ -349,15 +359,11 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
     if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
 
-    if(verbose > 0) { cerr << "A3:"; }
+    if(verbose > 0) { cerr << "A3:"; print_interval = (long)max(round(sqrt(end)/70), 1.0); }
     for(int d = 1; d*d < end; d++) {
-        if(verbose > 0) {
-            long print_interval = round(sqrt(end)/70);
-            print_interval = max(print_interval, 1l);
-            if(d % print_interval == 0) {
-                cerr << '.';
-                cerr.flush();
-            }
+        if(verbose > 0 && d % print_interval == 0) {
+            cerr << '.';
+            cerr.flush();
         }
         int starting_n = start;
         if(d*d > starting_n) {
@@ -367,40 +373,35 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
             starting_n += (d - starting_n % d);
         }                                              // In A3, we'll get a contribution
         for(int n = starting_n; n < end; n += d) {     // to traces[n] for each d that divides n
-            int a = 0;                                 // as long as d^2 <= n
+            long a = 0;                                // as long as d^2 <= n
             for(int c : divisors_of_level) {
                 int z = (n/d - d) % (level/conductor);
                 if(z < 0) z += (level/conductor);
                 int g = gcd_tables[c][level/c % c];
                 if(gcd_tables[level/conductor][z] % g == 0) {
-                    int y;
+                    long y;
                     if(g == 1) {
                         y = CRT(d, n/d, c, level/c);
-                        a = a + chi_values[y];
-                        a %= p;
+                        a = nmod_add(a, chi_values[y], modp);
                     }
                     else {
-                        long g1, u, v;
-                        XGCD(g1, u, v, c, level/c);
-                        y = (d + c * u * (n/d - d)/g1) % (level/g);
-                        if(y < 0) y += (level/g);
-                        //if(GCD(c/g, level/c) == 1) {            // We are doing a CRT lift
-                        //    y = CRT(d, n/d, c/g, level/c);      // here, but the moduli might
-                        //}                                       // not be coprime. Hence the
-                        //else { // GCD(c, (N/c)/g) == 1          // complication.
-                        //    if(n == 1) cout << "here" << d << " " << n/d << " "  << c << " " << (level/c)/g << " " << level << " " << g << endl;
-                        //    y = CRT(d, n/d, c, (level/c)/g);    //
-                        //}                                       // XXX: I've got this computation wrong
-                        a = a + euler_phi(g) * chi_values[y];   // a few times. I hope it is right now.
-                        a %= p;
-                        //if(n == 1) cout << "y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
+                        unsigned long g1, u, v;                     // We are doing a CRT lift
+                        g1 = n_xgcd(&u, &v, c, level/c);            // here, but the moduli might
+                        y = (d + c * u * (n/d - d)/g1) % (level/g); // not be coprime. Hence the
+                        if(y < 0) y += (level/g);                   // complication.
+
+                                                                    // XXX: I've got this computation wrong
+                        //a = a + phi_table[g] * chi_values[y];       // a few times. I hope it is right now.
+                        NMOD_ADDMUL(a, phi_table[g], chi_values[y], modp);
+                        //a %= p;
+
+                        //cout << "y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
                     }
                 }
             }
-            if(d*d == n) a = (a * one_over_two) % p;
-            traces[n] -=  d * a;
-            traces[n] %= p;
-            if(traces[n] < 0) traces[n] += p;
+            if(d*d == n) a = nmod_mul(a, one_over_two, modp);
+            a = nmod_mul(a, d, modp);
+            traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
     }
     if(verbose > 0) { cerr << endl; cerr.flush(); }
@@ -416,8 +417,9 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
             }
             for(int n = starting_n; n < end; n += t) {
                 if(gcd_tables[level][n/t % level] == 1) {
-                    traces[n] += t;
-                    traces[n] %= p;
+                    traces[n] = nmod_add(traces[n], t, modp);
+                    //traces[n] += t;
+                    //traces[n] %= p;
                 }
             }
         }
@@ -432,6 +434,7 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
         }
     }
     delete [] gcd_tables;
+    delete [] phi_table;
 }
 
 void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int start, int end, int level, long p, long ** chi_values, DirichletCharacter& chi, int verbose) {
@@ -446,6 +449,9 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
     //  - Is chi mod q or mod level? I don't know yet. What am I going to use chi for, anyway, other than for
     //    the computation of the conductor? Maybe I should compute chi_values in this function...
     
+    nmod_t modp;
+    nmod_init(&modp, p);
+
     int q = chi.conductor();
     if(q == level) {// There is nothing to do!
         return;
@@ -476,56 +482,35 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
             for(int n = max(1, start); n < end; n++) {
                 if(chi_values[N][n % N] != 0) {     // This is just a check on the GCD.
                     if(N == M) continue;
-                    traces[N][n] -= divisor_counts[N/M] * traces[M][n];
-                    traces[N][n] %= p;
-                    if(traces[N][n] < 0) traces[N][n] += p;
+                    long z = nmod_mul(divisor_counts[N/M], traces[M][n], modp);
+                    traces[N][n] = nmod_sub(traces[N][n], z, modp);
                 }
                 else {
-                        // I'm sure that we can this more efficiently, but let's
-                            // try the slow way first.
-                    int x = N/M; while(GCD(x, n) > 1) {x = x/GCD(x,n);}  // now x = (N/M) / GCD(N/M, n^oo)
-                    //int y = n;   while(GCD(y, M) > 1) {y = y/GCD(y,M);}  // and y = n / GCD(n, M^oo)
-                    int y = N; while(GCD(y, M) > 1) {y = y/GCD(y,M);}  // now y = N / GCD(N, M^oo)
-                    //for(int b : Ndivisors) {
+                    // I'm sure that we can this more efficiently, but let's
+                    // try the slow way first. This is not the slow part of
+                    // the program anyway...
+                    int x = N/M; while(GCD(x, n) > 1) {x = x/GCD(x,n);}     // now x = (N/M) / GCD(N/M, n^oo)
+                    int y = N; while(GCD(y, M) > 1) {y = y/GCD(y,M);}       // now y = N / GCD(N, M^oo)
                     for(int b : divisors(y)) {
                         if(b == 1 && N == M) continue;
                         if(n % (b*b) == 0) {
-                            traces[N][n] -=
-                                ((divisor_counts[x] * chi_values[q][b % q]) % p)
-                                * mobius(b)
-                                * (b * traces[M][n/(b*b)] % p);
-                            traces[N][n] %= p;
-                            if(traces[N][n] < 0) traces[N][n] += p;
-                            /*
-                            int_factorization_t bfac;
-                            factor(b, bfac);
-                            int P = 1;
-                            for(int k = 0; k < bfac.nfactors; k++) {
-                                int p = bfac.factors[k].p;
-                                int e = bfac.factors[k].e;
-                                int a = 1;
-                                if(e != 1) {
-                                    a = 0; int x = n; while(x % p == 0) {x /= p; a++;}
-                                }
-                                if(!(e == 1 || e*2 == a)) {
-                                    P = 0;
-                                    break;
-                                }
-                                if(e == 1 && a == 2) {
-                                    P *= 2;
-                                }
-                                P *= -1;
+                            int mu = mobius(b);
+                            if(mu == 1) {
+                                long z = nmod_mul(divisor_counts[x], chi_values[q][b % q], modp);
+                                z = nmod_mul(z, b, modp);
+                                z = nmod_mul(z, traces[M][n/(b*b)], modp);
+                                traces[N][n] = nmod_sub(traces[N][n], z, modp);
                             }
-                            traces[N][n] -= chi_values[q][b % q] * P * traces[M][n/(b*b)];
-                            traces[N][n] %= p;
-                            if(traces[N][n] < 0) traces[N][n] += p;
-                            */
+                            else if(mu == -1) {
+                                long z = nmod_mul(divisor_counts[x], chi_values[q][b % q], modp);
+                                z = nmod_mul(z, b, modp);
+                                z = nmod_mul(z, traces[M][n/(b*b)], modp);
+                                traces[N][n] = nmod_add(traces[N][n], z, modp);
+                            }
                         }
                     }
                 }
             }
-            //for(long M2 : divisors(N/M)) {  // Might need to do something like this.
-            //}
         }
     }
 
@@ -604,7 +589,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, lon
                                                                             // we need to backup and compute more traces.
         for(int m = 1; m <= nrows; m++) {
             for(int n = 1; n < ncoeffs; n++) {
-                int z = trace_TmTn_mod_p(traces[M].data(), chi_values[M], 2, M, m, n, p);
+                long z = trace_TmTn_mod_p(traces[M].data(), chi_values[M], 2, M, m, n, p);
                 nmod_mat_entry(bases[M], m-1, n) = z;
             }
         }
@@ -646,7 +631,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, lon
                 }
 
                 for(int n = 1; n < ncoeffs; n++) {
-                    int z = trace_TmTn_mod_p(traces[M].data(), chi_values[M], 2, M, m, n, p);
+                    long z = trace_TmTn_mod_p(traces[M].data(), chi_values[M], 2, M, m, n, p);
                     nmod_mat_entry(bases[M], j, n) = z;
                 }
                 rank = nmod_mat_rank(bases[M]);

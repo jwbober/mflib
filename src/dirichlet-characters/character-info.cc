@@ -4,11 +4,8 @@
 
 using namespace std;
 
-int main(int argc, char ** argv) {
-    long q = atol(argv[1]);
-    long n = atol(argv[2]);
-
-    DirichletGroup G(q);
+void print_character_info(DirichletGroup& G, long n) {
+    long q = G.q;
     DirichletCharacter chi = G.character(n);
 
     long primitive_index;
@@ -32,5 +29,31 @@ int main(int argc, char ** argv) {
         cout << " " << m;
     }
     cout << endl;
+}
+
+int main(int argc, char ** argv) {
+    long q = atol(argv[1]);
+    long n = 0;
+    if(argc > 2)
+        n = atol(argv[2]);
+
+    DirichletGroup G(q);
+    if(n < 0) {
+        n %= q;
+        n += q;
+    }
+    if(GCD(q, n) == 1) {
+        print_character_info(G, n);
+    }
+    else {
+        auto orbits = G.galois_orbits();
+        cout << "For modulus " << q << ", there are " << orbits.size() << " Galois orbits." << endl;
+        cout << "Printing out some information about a representative from each orbit:" << endl;
+        for(auto orbit : orbits) {
+            long n = *(orbit.begin());
+            print_character_info(G, n);
+            cout << endl << "------------------------------------------------------------" << endl << endl;
+        }
+    }
     return 0;
 }
