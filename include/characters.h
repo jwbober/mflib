@@ -562,6 +562,23 @@ public:
             }
         }
     }
+
+    std::set< std::set<long> > galois_orbits() {
+        std::set< std::set<long> > orbits;
+        std::set<long> not_in_orbit_yet;
+        for(long n = 1; n < q; n++) {
+            if(GCD(n, q) == 1) not_in_orbit_yet.insert(n);
+        }
+        while(not_in_orbit_yet.size() > 0) {
+            long next = *(not_in_orbit_yet.begin());
+            auto o = character(next).galois_orbit();
+            orbits.insert(o);
+            for(long n : o) {
+                not_in_orbit_yet.erase(n);
+            }
+        }
+        return orbits;
+    }
 };
 
 inline long DirichletGroup::index_from_primitive_character(long q0, long primitive_index) {

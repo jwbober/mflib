@@ -7,6 +7,7 @@
 #include "characters.h"
 #include "S2dimensions.h"
 #include "trace-formula.h"
+#include "classnumbers.h"
 
 using std::vector;
 using std::cerr;
@@ -36,6 +37,7 @@ int main(int argc, char ** argv) {
         cout << usage;
         return 0;
     }
+    init_classnumbers();
     int level = atoi(argv[1]);
     int chi_number = atoi(argv[2]);
     long p0 = atol(argv[3]);

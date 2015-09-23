@@ -11,6 +11,7 @@ OBJECTS = trace-formula.o \
 	  trace-unsieved.o \
 	  trace-sieved.o \
 	  trace-TnTm.o \
+	  classnumbers.o
 
 EXECUTABLES = weight1 \
 	      test-tf \
@@ -26,15 +27,17 @@ links: $(EXECUTABLES)
 
 $(OBJECTS): $(INCLUDE)/characters.h $(INCLUDE)/slint.h trace-formula.h
 
+classnumbers.o: classnumbers.cc
+
 write-classnumbers.o: write-classnumbers.cc
 write-classnumbers: write-classnumbers.o
 	g++ -o write-classnumbers write-classnumbers.o -lpari
 
-weight1: trace-formula.o weight1.o
-test-tf: trace-formula.o test-tf.o
-trace-unsieved: trace-formula.o trace-unsieved.o
-trace-sieved: trace-formula.o trace-sieved.o
-trace-TnTm: trace-formula.o trace-TnTm.o
+weight1: trace-formula.o weight1.o classnumbers.o
+test-tf: trace-formula.o test-tf.o classnumbers.o
+trace-unsieved: trace-formula.o trace-unsieved.o classnumbers.o
+trace-sieved: trace-formula.o trace-sieved.o classnumbers.o
+trace-TnTm: trace-formula.o trace-TnTm.o classnumbers.o
 
 clean:
 	-rm $(OBJECTS)

@@ -7,6 +7,7 @@
 #include "characters.h"
 #include "S2dimensions.h"
 #include "trace-formula.h"
+#include "classnumbers.h"
 
 using std::vector;
 using std::cerr;
@@ -285,6 +286,7 @@ int main(int argc, char ** argv) {
         cout << usage;
         return 0;
     }
+    init_classnumbers();
     int level = atoi(argv[1]);
     int chi_number = 0;
     long p0 = 0;
@@ -301,9 +303,9 @@ int main(int argc, char ** argv) {
         DirichletCharacter chi = G.character(chi_number);
         int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
         if(bound < 0)
-            cout << level << " " << chi_number << " " << p << " " << '?' << endl;
+            cout << level << " " << chi.m << " " << p << " " << '?' << endl;
         else
-            cout << level << " " << chi_number << " " << p << " " << bound << endl;
+            cout << level << " " << chi.m << " " << p << " " << bound << endl;
     }
     else {
         for(int k = 1; k < level; k++) {
@@ -312,9 +314,9 @@ int main(int argc, char ** argv) {
             long p = p0;
             int bound = weight1_dimension_bound(level, chi, p, extra_coeffs, verbose);
             if(bound < 0)
-                cout << level << " " << chi_number << " " << p << " " << '?' << endl;
+                cout << level << " " << chi.m << " " << p << " " << '?' << endl;
             else
-                cout << level << " " << chi_number << " " << p << " " << bound << endl;
+                cout << level << " " << chi.m << " " << p << " " << bound << endl;
         }
     }
     return 0;

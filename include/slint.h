@@ -399,7 +399,33 @@ static long kronecker(long n, long m) {
     if(GCD(n,m) != 1) {
         return 0;
     }
+    if(n < 0) {
+        if(m % 2 == 1) {
+            n = n % m;
+            if(n != 0) n = n + m;
+        }
+        else {
+            n = n % (4*m);
+            if(n != 0) n += 4*m;
+        }
+    }
+    //if(n > m) {
+    //    n = n % m;
+    //}
     long t = 1;
+    /*
+    std::cout << std::endl;
+    std::cout << n << " " << m << std::endl;
+    while(m > 1) {
+        long m_odd = odd_part(m);
+        long n_odd = odd_part(n);
+        if(m_odd % 4 == 3 && n_odd % 4 == 3) t = -t;
+        long x = n;
+        n = m % n;
+        m = x;
+    }
+    std::cout << t << " " << n << " " << m << std::endl;
+    */
     while(m > 1) {
         long m_odd, m_even;
         m_odd = odd_part(m);
