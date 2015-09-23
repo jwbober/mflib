@@ -31,6 +31,51 @@ using std::complex;
 //    return mat->rows[i][j];
 //}
 
+static void square_divisors_mod03(int D, int * divisors, int& k) {
+    // For f0, f1, ..., f_{j-1} such that
+    //
+    //  (f_i)^2 divides D AND D/(f_i)^2 == 0 or 3 mod 4
+    //
+    // we set divisors[k + i] = f_i, and then set k := k + j. If one of these
+    // f_i is equal to 1, then we choose f_0 = 1, so divisors[k] = 1 after the
+    // function exits. These f are otherwise unsorted.
+    //
+    // (We assume, of course, that divisors[k] through divisors[k + j - 1]
+    // are valid memory locations...)
+    //
+    // What's going on here is that -D is (probably) a discriminant, and we
+    // are finding all the f such that -D/f^2 is also a discriminant.
+    //
+    // For reference: from a separate check we know that an array of size
+    // ceil(0.83 * X + 10) will be large enough to hold all the f for D == 0 or 3 mod 4,
+    // D < x (That's a bit generous, even, but I don't want to bother being too precise.)
+
+    int_factorization_t fac;
+    factor(D, fac);
+    int e[fac.nfactors];
+    for(int j = 0; j < fac.nfactors; j++) {e[j] = 0;}
+    int f = 1;                                                      // We'll write f = prod(fac.factors[k].p^(e[k]/2))
+    do {
+        if(D/(f*f) % 4 == 0 || D/(f*f) % 4 == 3) {
+            divisors[k] = f;
+            k++;
+        }
+        int j = 0;                                                  // This bit is a bit messy.
+        while(j < fac.nfactors && e[j] + 2 > fac.factors[j].e) {    //
+            while(e[j] > 0) {                                       // We're iterating through the f such that f^2
+                e[j] -= 2;                                          // divides n by using the known factorization
+                f = f/fac.factors[j].p;                             // of it. This means iterating through all the
+            }                                                       // tuples (e_0, e_1, ..., e_k) where e_j is even
+            j++;                                                    // and e_i <= fac.factors[j].e.
+        }                                                           //
+        if(j == fac.nfactors) f = 0;
+        else {
+            e[j] += 2;
+            f *= fac.factors[j].p;
+        }
+    } while(f != 0);
+}
+
 long trace_TmTn_mod_p(
         long * traces,
         long * chi_values,
@@ -290,6 +335,20 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
     long print_interval = 0;
     if(verbose > 0) { cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = max(print_interval, 1l); }
 
+    int * square_divisors = new int[ (int)(4*end*.83 + 11) ];   // To avoid repeated factorizations in the following loop,
+    int * square_divisors_indices = new int[4*end + 1];         // we create some arrays such that for each D == 0 or 3 mod 4,
+    square_divisors_indices[3] = 0;                             // D < 4*end,
+    square_divisors[0] = 1;                                     //
+    for(int k = 1, j = 1; j < end; j++) {                       // square_divisors[square_divisors_indices[D]]
+        square_divisors_indices[4*j] = k;                       //
+        square_divisors_mod03(4*j, square_divisors, k);         // is the beginning of a 1-terminated list of f such that 
+        square_divisors_indices[4*j + 3] = k;                   // f^2 divides D and D/f^2 == 0 or 3 mod 4.
+        square_divisors_mod03(4*j + 3, square_divisors, k);
+        square_divisors[k] = 1;     // This is about to get
+                                    // overwritten, except for
+                                    // the last iteration.
+    }
+
     int t = sqrt(4*end);
     if(t*t == 4*end) t--;
     for(t = -t; (long)t*t < 4l*end; t++) {
@@ -311,48 +370,35 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
                 // for each f such that f*f divides (t^2 - 4n) AND
                 // gcd(f, N) * N divides x*x - t*x + n
                 //
-                // So we find the square divisors of t^2 - 4n...
-                int_factorization_t fac;
-                factor(4*n - t*t, fac);                                         //
-                int D = 1;                                                      //
-                for(int k = 0; k < fac.nfactors; k++) {                         // Set D = squarefree_part(4n - t^2)
-                    if(fac.factors[k].e % 2 == 1) D *= fac.factors[k].p;        //
-                }                                                               //
-                if(D % 4 == 2 || D % 4 == 3) {                                  // and then set D to be the negative of the
-                    D *= 4;                                                     // discriminant of Q(t^2 - 4n)
-                }                                                               //
-                D = 4*n - t*t;
-                int e[fac.nfactors];
-                for(int k = 0; k < fac.nfactors; k++) {e[k] = 0;}
-                int f = 1;                                                      // We'll write f = prod(fac.factors[k].p^(e[k]/2))
-                do {                                                            // (But we don't directly compute it that way.)
-                    if( (4l*n - (long)t*t)/((long)f*f) % 4 == 0 || (4l*n - (long)t*t)/((long)f*f) % 4 == 3) {
-                        int g = gcd_tables[level][f % level];
-                        if( ((long)x*x - t*x + n) % (g * level) == 0) {
-                            long z = psi_table[level]/psi_table[level/g];
-                            if(z >= p) z %= p;
-                            z = nmod_mul(z, chi, modp);
-                            z = nmod_mul(z, classnumbers[D/(f*f)], modp);
-                            if(D/(f*f) == 3) z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
-                            if(D/(f*f) == 4) z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
-                            z = nmod_mul(z, one_over_two, modp);
-                            traces[n] = nmod_sub(traces[n], z, modp);
-                        }
+                // So we find the square divisors of t^2 - 4n that we've
+                // already found
+                int D = 4*n - t*t;
+                int k = square_divisors_indices[D];
+                int f = square_divisors[k];
+                do {
+                    int g;
+                    if(f == 1) {
+                        g = 1;
                     }
-                    int j = 0;                                                  // This bit is a bit messy.
-                    while(j < fac.nfactors && e[j] + 2 > fac.factors[j].e) {    //
-                        while(e[j] > 0) {                                       // We're iterating through the f such that f^2
-                            e[j] -= 2;                                          // divides 4n - t^2 by using the known factorization
-                            f = f/fac.factors[j].p;                             // of it. This means iterating through all the
-                        }                                                       // tuples (e_0, e_1, ..., e_k) where e_j is even
-                        j++;                                                    // and e_i <= fac.factors[j].e.
-                    }                                                           //
-                    if(j == fac.nfactors) f = 0;
+                    else if(f < level) {
+                        g = gcd_tables[level][f];
+                    }
                     else {
-                        e[j] += 2;
-                        f *= fac.factors[j].p;
+                        g = gcd_tables[level][f % level];
                     }
-                } while(f != 0);
+                    if(g == 1 || ((long)x*x - t*x + n) % (g * level) == 0) {
+                        long z = psi_table[level]/psi_table[level/g];
+                        if(z >= p) z %= p;
+                        z = nmod_mul(z, chi, modp);
+                        z = nmod_mul(z, classnumbers[D/(f*f)], modp);
+                        if(D/(f*f) == 3) z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
+                        if(D/(f*f) == 4) z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
+                        z = nmod_mul(z, one_over_two, modp);
+                        traces[n] = nmod_sub(traces[n], z, modp);
+                    }
+                    k++;
+                    f = square_divisors[k];
+                } while(f != 1);
             }
         }
     }

@@ -6,6 +6,7 @@
 #include "characters.h"
 #include "S2dimensions.h"
 #include "trace-formula.h"
+#include "classnumbers.h"
 
 using std::vector;
 using std::cerr;
@@ -35,6 +36,8 @@ int main(int argc, char ** argv) {
     long p = atol(argv[3]);
     int start = atoi(argv[4]);
     int end = atoi(argv[5]);
+
+    init_classnumbers();
 
     DirichletGroup G(level);
     DirichletCharacter chi = G.character(chi_number);
