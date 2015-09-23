@@ -601,6 +601,11 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, lon
 
         int compute_more_count = 0;
         if(nmod_mat_rank(bases[M]) < new_dimension) {
+            if(verbose > 0) {
+                cerr << "For level " << M << " the first rows were not enough." << endl
+                     << "Now making sure that the rank increases with each row that we add." << endl;
+                cerr.flush();
+            }
             nmod_mat_zero(bases[M]);
             int rank = 0;
             // It is possible that we don't actualy have a basis yet. I think we
@@ -613,6 +618,11 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, lon
             int j = 0; // We'll be putting the trace of TmTn into the nth column
             int m = 1; // in the jth row.
             while(j < nrows) {
+                if(verbose > 1) {
+                    cerr << "Trying to put " << m << "th possible basis element into the " << j << "th row." << endl;
+                    cerr << "Looking for rank " << new_dimension << endl;
+                    cerr.flush();
+                }
                 // We need to compute more traces now, since
                 // need more than we originally expected.
                 int max_trace_needed_next = m * ncoeffs;
