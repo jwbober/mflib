@@ -402,6 +402,8 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
             }
         }
     }
+    delete [] square_divisors;
+    delete [] square_divisors_indices;
     if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
 
