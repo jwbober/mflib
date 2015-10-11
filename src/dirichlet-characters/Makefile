@@ -6,8 +6,10 @@ CXXFLAGS = -O2 -std=c++11 -Wall
 LDLIBS = -lfftw3
 
 OBJECTS = character-info.o \
+	  chimaxsum.o
 
 EXECUTABLES = character-info \
+	      chimaxsum
 
 all: $(EXECUTABLES)
 

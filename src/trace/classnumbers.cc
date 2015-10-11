@@ -17,12 +17,12 @@ int init_classnumbers() {
     int fd = open(filelocation.c_str(), O_RDONLY);
     if(fd == -1) {
         std::cerr << "error opening mmapped file" << std::endl;
-        exit(-1);
+        exit(1);
     }
     struct stat fs;
     if(fstat(fd, &fs) == -1) {
         std::cerr << "error in fstat" << std::endl;
-        exit(-1);
+        exit(1);
     }
 
     size_t filesize = fs.st_size;
@@ -31,7 +31,7 @@ int init_classnumbers() {
     classnumbers = (int *)mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
     if(classnumbers == MAP_FAILED) {
         std::cerr << "error opening mmapped file" << std::endl;
-        exit(-1);
+        exit(1);
     }
     return 1;
 }

@@ -15,7 +15,7 @@ def do_q(q):
         #        break
         #if not correct_orders:
         #    continue
-        command = './weight1 {} {} {} 100'.format(q, chi.number(), prime)
+        command = 'weight1 {} {} {} 100'.format(q, chi.number(), prime)
         print command
         sys.stdout.flush()
         #output = subprocess.check_output(command, shell=True)

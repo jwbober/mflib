@@ -510,6 +510,39 @@ static void prime_range(std::vector<long> * primes, long end, long start = 2) {
     delete [] sieve_range;
 }
 
+
+static std::vector<long> prime_range(long end, long start = 2) {
+    // fill primes with a list of prime numbers between
+    // start and end (including start but not end)
+
+    std::vector<long> primes;
+    if(start > 2) {
+        std::cerr << "that's not implemented." << std::endl;
+        return primes;
+    }
+
+
+    // a really simple sieve...
+    bool * sieve_range = new bool[end]();
+    sieve_range[0] = 1;
+    sieve_range[1] = 1;
+    long p = 2;
+    while(p < end) {
+        primes.push_back(p);
+        for(long k = 2*p; k < end; k += p) {
+            sieve_range[k] = 1;
+        }
+        do {
+            p++;
+        } while (p < end && sieve_range[p] == 1);
+    }
+
+    delete [] sieve_range;
+    return primes;
+}
+
+
+
 static void squarefree_range(std::vector<long> * squarefrees, long end, long start = 1) {
     // fill primes with a list of prime numbers between
     // start and end (including start but not end)

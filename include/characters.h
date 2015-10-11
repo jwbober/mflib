@@ -44,6 +44,7 @@ public:
     std::complex<double> gauss_sum();
     void values_mod_p(long &p, long * chi_values);
     std::set<long> galois_orbit();
+    std::complex<double> L_one();
 };
 
 
@@ -106,7 +107,11 @@ public:
             return A[n % q_odd][0] != -1;
     }
 
+    DirichletGroup() {
+        q = 0;
+    }
     DirichletGroup(long q_) : q(q_) {
+        if(q == 0) return;
         q_even = 1;
         q_odd = q;
         while(q_odd % 2 == 0) {
@@ -225,6 +230,7 @@ public:
     }
 
     ~DirichletGroup() {
+        if(q == 0) return;
         if(q_odd > 1) {
             delete [] zeta_powers_odd;
             for(int n = 0; n < q_odd; n++) {
@@ -1021,7 +1027,7 @@ inline void DirichletCharacter::values_mod_p(long & p, long * chi_values) {
             std::cerr << q << " " << m << " " << e << " " << order << " " << phi_q << " " <<
                 exponent_adjustment << std::endl;
             std::cerr << "error" << std::endl;
-            exit(0);
+            exit(1);
         }
         chi_values[k] = PowerMod(g, e/exponent_adjustment, p);
     }
@@ -1047,5 +1053,37 @@ inline std::set<long> DirichletCharacter::galois_orbit() {
     }
 
     return orbit;
+}
+
+inline std::complex<double> DirichletCharacter::L_one() {
+    // we don't do this very efficiently. But then
+    // since we already compute a full table of discrete logs,
+    // we don't do anything very efficiently.
+
+    // (We can easily compute all the values of L(1, chi), just about
+    // optimally, using an FFT with the function DFTsum()
+
+    // WARNING: We assume that chi is primitive.
+
+    long q = parent->q;
+
+    if(is_even()) {
+        std::complex<double> S = 0.0;
+        for(long k = 1; k < q; k++) {
+            S = S + value(k)*std::log(std::sin(M_PI * k/(double)q));
+        }
+        S = std::conj(S);
+        S *= -gauss_sum()/(double)q;
+        return S;
+    }
+    else {
+        std::complex<double> S = 0.0;
+        for(long k = 1; k <= q/2; k++) {
+            S += value(k);
+        }
+        S *= (std::complex<double>(0, 1) * M_PI) / ((2.0 - value(2)) * gauss_sum());
+        S = std::conj(S);
+        return S;
+    }
 }
 #endif
