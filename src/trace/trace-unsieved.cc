@@ -55,16 +55,32 @@ int main(int argc, char ** argv) {
     long * traces = new long[end - start];
     complex<double> * ztraces = new complex<double>[end - start];
     long * chi_values = new long[level];
+    complex<double> * chi_zvalues = new complex<double>[level];
     chi.values_mod_p(p0, chi_values);
+    for(int k = 0; k < level; k++) {
+        chi_zvalues[k] = chi.value(k);
+    }
     //for(int k = 0; k < level; k++) {
     //    cout << k << " " << chi_values[k] << " " << chi.value(k) << endl;
     //}
 
     trace_Tn_modp_unsieved_weight2(traces, start, end, level, p0, chi_values, chi);
-    trace_Tn_unsieved_weight2(ztraces, start, end, level, chi);
+    trace_Tn_unsieved_weight2(ztraces, start, end, level, chi_zvalues, chi);
     cout << p0 << endl;
-    for(int k = start; k < end; k++) {
-        cout << k << " " << traces[k] << " " << ztraces[k] << endl;
+    for(int m = start; m < end; m++) {
+        int k = m - start;
+        int ok = 0;
+        if(imag(ztraces[k]) == 0.0 && (int)real(ztraces[k]) == real(ztraces[k])) {
+            int z = (int)real(ztraces[k]);
+            z = z % p0;
+            if(z < 0) z += p0;
+            if(z == traces[k]) ok = 1;
+            else ok = -1;
+        }
+        cout << m << " " << traces[k] << " " << ztraces[k] << " ";
+        if(ok == 1) cout << "ok" << endl;
+        else if(ok == -1) cout << "ohno" << endl;
+        else cout << "?" << endl;
     }
     return 0;
 }

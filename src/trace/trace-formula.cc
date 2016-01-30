@@ -2,8 +2,13 @@
 #include <vector>
 #include <complex>
 
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
+
 #include "flint/flint.h"
 #include "flint/nmod_mat.h"
+
+#include "acb_mat.h"
 
 #include "slint.h"
 #include "characters.h"
@@ -19,6 +24,33 @@ using std::max;
 using std::vector;
 using std::complex;
 
+using std::real;
+using std::imag;
+
+bool has_unique_entries(const complex<double> * zz, int length, double eps = 1e-10) {
+    complex<double> * z = new complex<double>[length];
+    std::copy(zz, zz + length, z);
+    std::sort(z, z + length,
+        [](complex<double> x, complex<double> y){
+            return real(x) < real(y);
+        }
+    );
+    complex<double> prev = z[0];
+    for(int k = 1; k < length; k++) {
+        int j = k;
+        while(j < length && abs(real(z[j]) - real(prev)) < eps) {
+            if(abs(z[j] - prev) < eps) return false;
+            j++;
+        }
+        prev = z[k];
+    }
+    delete [] z;
+    return true;
+}
+
+typedef Eigen::Matrix<complex<double>, Eigen::Dynamic, Eigen::Dynamic> cmatrix_t;
+
+using Eigen::ComplexEigenSolver;
 
 //
 // Uncomment for range checking on nmod_mat_t accesses.
@@ -97,7 +129,7 @@ long trace_TmTn_mod_p(
         if(g % d != 0) continue; // this is silly, but this will usually
                                  // be a short sum
         if(GCD(d,level) != 1) continue;
-        
+
         //long dk = PowerMod(d, k-1, p);
         long dk = nmod_pow_ui(d, k - 1, modp);
         long z = nmod_mul(traces[m/d * n/d], dk, modp);
@@ -108,6 +140,34 @@ long trace_TmTn_mod_p(
     }
     return TnTm;
 }
+
+complex<double> trace_TmTn(
+        complex<double> * traces,
+        complex<double> * chi_values,
+        int k,
+        int level,
+        int m,
+        int n) {
+    //
+    // Return the trace mod p of TmTn acting on S_k(chi).
+    //
+
+    int g = GCD(m,n);
+    complex<double> TnTm = 0;
+
+    for(int d = 1; d <= g; d++) {
+        if(g % d != 0) continue; // this is silly, but this will usually
+                                 // be a short sum
+        if(GCD(d,level) != 1) continue;
+
+        //long dk = PowerMod(d, k-1, p);
+        double dk = pow(d, k - 1);
+        complex<double> z = traces[m/d * n/d] * dk * chi_values[d % level];
+        TnTm += z;
+    }
+    return TnTm;
+}
+
 
 
 
@@ -127,14 +187,20 @@ int psi(int N) {
     return PSI;
 }
 
-void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int level, DirichletCharacter& chi, int verbose) {
+void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int level, complex<double> * chi_values, DirichletCharacter& chi, int verbose) {
+
     traces = traces - start; // We adjust the traces pointer so that we
                              // can work with traces[start] through
                              // trace[end-1] instead of subtracting start all
                              // the time.
 
+    //long one_over_twelve = nmod_inv(12, modp);
+    //long one_over_three = nmod_inv(3, modp);
+    //long one_over_two = nmod_inv(2, modp);
+
     int ** gcd_tables = new int*[level + 1];
     int * psi_table = new int[level + 1];
+    int * phi_table = new int[level + 1];
 
     for(int k = 1; k < level + 1; k++) {
         if(level % k == 0) {
@@ -143,6 +209,7 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
             for(int j = 0; j < k; j++) {
                 gcd_tables[k][j] = GCD(k,j);
             }
+            phi_table[k] = euler_phi(k);
         }
     }
 
@@ -154,22 +221,46 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
     for(int n = start; n < end; n++) {
         traces[n] = 0.0;
     }
-    
-    complex<double> A1 = (complex<double>)(psi_table[level]/12.0);
+
+    complex<double> A1 = psi_table[level]/12.0;
     int z = (int)sqrt(start);                               //
     while(z*z < start) z++;                                 // A1 is only nonzero when n is a square,
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
-        traces[z*z] += A1 * chi.value(z);    // depends on n at all.
+                                                            // depends on n at all.
+        traces[z*z] += A1 * chi_values[z % level];
     }
 
-    cout << traces[1] << endl;
-
+    //cout << traces[1] << endl;
     // computation of A2
+    //cout << "computing A2 for level " << level << endl;
+
+    long print_interval = 0;
+    if(verbose > 0) { cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = max(print_interval, 1l); }
+
+    int * square_divisors = new int[ (int)(4*end*.83 + 11) ];   // To avoid repeated factorizations in the following loop,
+    int * square_divisors_indices = new int[4*end + 1];         // we create some arrays such that for each D == 0 or 3 mod 4,
+    square_divisors_indices[3] = 0;                             // D < 4*end,
+    square_divisors[0] = 1;                                     //
+    for(int k = 1, j = 1; j < end; j++) {                       // square_divisors[square_divisors_indices[D]]
+        square_divisors_indices[4*j] = k;                       //
+        square_divisors_mod03(4*j, square_divisors, k);         // is the beginning of a 1-terminated list of f such that
+        square_divisors_indices[4*j + 3] = k;                   // f^2 divides D and D/f^2 == 0 or 3 mod 4.
+        square_divisors_mod03(4*j + 3, square_divisors, k);
+        square_divisors[k] = 1;     // This is about to get
+                                    // overwritten, except for
+                                    // the last iteration.
+    }
+
     int t = sqrt(4*end);
     if(t*t == 4*end) t--;
     for(t = -t; (long)t*t < 4l*end; t++) {
+        if(verbose > 0 && t % print_interval == 0)  {
+            cerr << '.';
+            cerr.flush();
+        }
         for(int x = 0; x < level; x++) {
-            if(chi.value(x) == 0.0) continue;
+            complex<double> chi_value = chi_values[x];
+            if(chi_value == 0.0) continue;
             // These values of x and t will contribute to those n for
             // which the level divides x^2 - tx + n.
             int starting_n = max(start, t*t/4 + 1);
@@ -181,82 +272,96 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
                 // for each f such that f*f divides (t^2 - 4n) AND
                 // gcd(f, N) * N divides x*x - t*x + n
                 //
-                // So we find the square divisors of t^2 - 4n...
-                int_factorization_t fac;
-                factor(4*n - t*t, fac);                                         //
-                int D = 1;                                                      //
-                for(int k = 0; k < fac.nfactors; k++) {                         // Set D = squarefree_part(4n - t^2)
-                    if(fac.factors[k].e % 2 == 1) D *= fac.factors[k].p;        //
-                }                                                               //
-                if(D % 4 == 2 || D % 4 == 3) {                                  // and then set D to be the negative of the
-                    D *= 4;                                                     // discriminant of Q(t^2 - 4n)
-                }                                                               //
-                D = 4*n - t*t;
-                int e[fac.nfactors];
-                for(int k = 0; k < fac.nfactors; k++) {e[k] = 0;}
-                int f = 1;                                                      // We'll write f = prod(fac.factors[k].p^(e[k]/2))
-                do {                                                            // (But we don't directly compute it that way.)
-                    if( (4l*n - (long)t*t)/((long)f*f) % 4 == 0 || (4l*n - (long)t*t)/((long)f*f) % 4 == 3) {
-                        int g = gcd_tables[level][f % level];
-                        if( (x*x - t*x + n) % (g * level) == 0) {
-                            complex<double> z = (complex<double>)(psi_table[level]/psi_table[level/g]) * chi.value(x) * (complex<double>)classnumbers[D/(f*f)];
-                            if(D/(f*f) == 3) z /= 3.0;
-                            if(D/(f*f) == 4) z /= 4.0;
-                            traces[n] -= z/2.0;
-                        }
+                // So we find the square divisors of t^2 - 4n that we've
+                // already found
+                int D = 4*n - t*t;
+                int k = square_divisors_indices[D];
+                int f = square_divisors[k];
+                do {
+                    int g;
+                    if(f == 1) {
+                        g = 1;
                     }
-                    int j = 0;                                                  // This bit is a bit messy.
-                    while(j < fac.nfactors && e[j] + 2 > fac.factors[j].e) {    //
-                        while(e[j] > 0) {                                       // We're iterating through the f such that f^2
-                            e[j] -= 2;                                          // divides 4n - t^2 by using the known factorization
-                            f = f/fac.factors[j].p;                             // of it. This means iterating through all the
-                        }                                                       // tuples (e_0, e_1, ..., e_k) where e_j is even
-                        j++;                                                    // and e_i <= fac.factors[j].e.
-                    }                                                           //
-                    if(j == fac.nfactors) f = 0;
+                    else if(f < level) {
+                        g = gcd_tables[level][f];
+                    }
                     else {
-                        e[j] += 2;
-                        f *= fac.factors[j].p;
+                        g = gcd_tables[level][f % level];
                     }
-                } while(f != 0);
+                    if(g == 1 || ((long)x*x - t*x + n) % (g * level) == 0) {
+                        complex<double> z = (complex<double>)(psi_table[level]/psi_table[level/g]);
+                        z *= chi_value;
+                        z *= classnumbers[D/(f*f)];
+                        if(D/(f*f) == 3) z /= 3.0; // z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
+                        if(D/(f*f) == 4) z /= 2.0; // z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
+                        z /= 2.0;
+                        traces[n] -= z;
+                        //z = nmod_mul(z, one_over_two, modp);
+                        //traces[n] = nmod_sub(traces[n], z, modp);
+                    }
+                    k++;
+                    f = square_divisors[k];
+                } while(f != 1);
             }
         }
     }
-    cout << traces[1] << endl;
+    delete [] square_divisors;
+    delete [] square_divisors_indices;
+    if(verbose > 0) { cerr << endl; cerr.flush(); }
+    //cout << traces[1] << endl;
 
-    // computation of A3
-    for(int d = 1; d*d < end; d++) {            // In A3, we'll get a contribution
-        for(int n = d*d; n < end; n += d) {     // to traces[n] for each d that divides n
-            complex<double> a = 0.0;                          // as long as d^2 <= n
+    if(verbose > 0) { cerr << "A3:"; print_interval = (long)max(round(sqrt(end)/70), 1.0); }
+    for(int d = 1; d*d < end; d++) {
+        if(verbose > 0 && d % print_interval == 0) {
+            cerr << '.';
+            cerr.flush();
+        }
+        int starting_n = start;
+        if(d*d > starting_n) {
+            starting_n = d*d;
+        }
+        else if(starting_n % d != 0) {
+            starting_n += (d - starting_n % d);
+        }                                              // In A3, we'll get a contribution
+        for(int n = starting_n; n < end; n += d) {     // to traces[n] for each d that divides n
+            complex<double> a = 0;                     // as long as d^2 <= n
             for(int c : divisors_of_level) {
                 int z = (n/d - d) % (level/conductor);
                 if(z < 0) z += (level/conductor);
                 int g = gcd_tables[c][level/c % c];
                 if(gcd_tables[level/conductor][z] % g == 0) {
-                    int y;
+                    long y;
                     if(g == 1) {
                         y = CRT(d, n/d, c, level/c);
-                        a = a + chi.value(y);
+                        a += chi_values[y];
                     }
                     else {
-                        // XXX THIS IS WRONG
-                        if(GCD(c/g, level/c) == 1) {            // We are doing a CRT lift
-                            y = CRT(d, n/d, c/g, level/c);      // here, but the moduli might
-                        }                                       // not be coprime. Hence the
-                        else { // GCD(c, (N/c)/g) == 1          // complication.
-                            y = CRT(d, n/d, c/g, (level/c)/g);
-                        }
-                        a = a + (complex<double>)euler_phi(g) * chi.value(y);
-                        if(n == 1) cout << "* y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
+                        unsigned long g1, u, v;                     // We are doing a CRT lift
+                        g1 = n_xgcd(&u, &v, c, level/c);            // here, but the moduli might
+                        y = (d + c * u * (n/d - d)/g1) % (level/g); // not be coprime. Hence the
+                        if(y < 0) y += (level/g);                   // complication.
+
+                                                                    // XXX: I've got this computation wrong
+                        //a = a + phi_table[g] * chi_values[y];       // a few times. I hope it is right now.
+
+                        a += (double)phi_table[g] * chi_values[y];
+                        //NMOD_ADDMUL(a, phi_table[g], chi_values[y], modp);
+                        //a %= p;
+
+                        //cout << "y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
                     }
                 }
             }
-            if(d*d == n) a /= 2.0;
-            traces[n] -=  (complex<double>)d * a;
+            if(d*d == n) a /= 2.0; //a = nmod_mul(a, one_over_two, modp);
+            a *= (double)d; //a = nmod_mul(a, d, modp);
+            traces[n] -= a;
+            //traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
     }
-    cout << traces[1] << endl;
-    
+    if(verbose > 0) { cerr << endl; cerr.flush(); }
+    //cout << traces[1] << endl;
+
+    //cout << "computing A4 for level " << level << endl;
     // computation of A4
     if(chi.m == 1) {
         for(int t = 1; t < end; t++) {
@@ -266,13 +371,17 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
             }
             for(int n = starting_n; n < end; n += t) {
                 if(gcd_tables[level][n/t % level] == 1) {
-                    traces[n] += t;
+                    traces[n] += (double)t;
+                    //traces[n] = nmod_add(traces[n], t, modp);
+                    //traces[n] += t;
+                    //traces[n] %= p;
                 }
             }
         }
     }
-    cout << traces[1] << endl;
+    //cout << traces[1] << endl;
 
+    //cout << "cleaning up for level " << level << endl;
     delete [] psi_table;
     for(int k = 1; k < level + 1; k++) {
         if(level % k == 0) {
@@ -280,7 +389,10 @@ void trace_Tn_unsieved_weight2(complex<double> * traces, int start, int end, int
         }
     }
     delete [] gcd_tables;
+    delete [] phi_table;
 }
+
+
 
 void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level, long p, long * chi_values, DirichletCharacter& chi, int verbose) {
     // We expect that p is not 2 or 3.
@@ -331,7 +443,7 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
     //cout << traces[1] << endl;
     // computation of A2
     //cout << "computing A2 for level " << level << endl;
-    
+
     long print_interval = 0;
     if(verbose > 0) { cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = max(print_interval, 1l); }
 
@@ -341,7 +453,7 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
     square_divisors[0] = 1;                                     //
     for(int k = 1, j = 1; j < end; j++) {                       // square_divisors[square_divisors_indices[D]]
         square_divisors_indices[4*j] = k;                       //
-        square_divisors_mod03(4*j, square_divisors, k);         // is the beginning of a 1-terminated list of f such that 
+        square_divisors_mod03(4*j, square_divisors, k);         // is the beginning of a 1-terminated list of f such that
         square_divisors_indices[4*j + 3] = k;                   // f^2 divides D and D/f^2 == 0 or 3 mod 4.
         square_divisors_mod03(4*j + 3, square_divisors, k);
         square_divisors[k] = 1;     // This is about to get
@@ -454,7 +566,7 @@ void trace_Tn_modp_unsieved_weight2(long * traces, int start, int end, int level
     }
     if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
-    
+
     //cout << "computing A4 for level " << level << endl;
     // computation of A4
     if(chi.m == 1) {
@@ -496,7 +608,7 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
     //
     //  - Is chi mod q or mod level? I don't know yet. What am I going to use chi for, anyway, other than for
     //    the computation of the conductor? Maybe I should compute chi_values in this function...
-    
+
     nmod_t modp;
     nmod_init(&modp, p);
 
@@ -504,7 +616,7 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
     if(q == level) {// There is nothing to do!
         return;
     }
-        
+
     int * divisor_counts = new int[level + 1];
     vector<int> level_divisors = divisors(level);
     vector<int> sublevels;                          // We fill sublevels with all of the M such that
@@ -515,7 +627,7 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
         divisor_counts[M] = ndivisors(M);           // At the same time, we remember
                                                     // how many divisors every divisor of N has,
                                                     // since we'll want this later.
-    }                                               
+    }
 
     for(unsigned int k = 0; k < sublevels.size(); k++) {
         int M = sublevels[k];
@@ -564,6 +676,279 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(vector<long> * traces, int sta
 
     delete [] divisor_counts;
 }
+
+void sieve_trace_Tn_on_weight2_for_newspaces(vector< complex<double> > * traces, int start, int end, int level, complex<double> ** chi_values, DirichletCharacter& chi, int verbose) {
+    //
+    // On input, we should have:
+    //  - level is the (maximum) level that we are after
+    //  - traces[M][n] = Trace(Tn|S_2(M, chi)) (mod p) for every M > 1 such that q | M | level and start <= n < end;
+    //    (note the special exception that we don't require that traces[1] is filled with zeros.)
+    //
+    //  - chi_values[M][n] = The value of the (restriction or extension) of chi to M, for 0 <= n < M;
+    //
+    //  - Is chi mod q or mod level? I don't know yet. What am I going to use chi for, anyway, other than for
+    //    the computation of the conductor? Maybe I should compute chi_values in this function...
+
+    int q = chi.conductor();
+    if(q == level) {// There is nothing to do!
+        return;
+    }
+
+    int * divisor_counts = new int[level + 1];
+    vector<int> level_divisors = divisors(level);
+    vector<int> sublevels;                          // We fill sublevels with all of the M such that
+    for(int M : level_divisors) {                   // q | M | level.
+        if(M % q == 0) {
+            sublevels.push_back(M);
+        }
+        divisor_counts[M] = ndivisors(M);           // At the same time, we remember
+                                                    // how many divisors every divisor of N has,
+                                                    // since we'll want this later.
+    }
+
+    for(unsigned int k = 0; k < sublevels.size(); k++) {
+        int M = sublevels[k];
+        if(M == 1) continue;
+        for(unsigned int j = k; j < sublevels.size(); j++) {
+            int N = sublevels[j];
+            vector<int> Ndivisors = divisors(N);
+            if(N % M != 0) continue;
+            // At this point, we are assuming that traces[M] has already been sieved,
+            // and we are removing the contribution of traces[M] from from traces[N].
+
+            for(int n = max(1, start); n < end; n++) {
+                if(chi_values[N][n % N] != 0.0) {     // This is just a check on the GCD.
+                    if(N == M) continue;
+                    complex<double> z = (double)divisor_counts[N/M] * traces[M][n];
+                    traces[N][n] -= z;
+                    //long z = nmod_mul(divisor_counts[N/M], traces[M][n], modp);
+                    //traces[N][n] = nmod_sub(traces[N][n], z, modp);
+                }
+                else {
+                    // I'm sure that we can this more efficiently, but let's
+                    // try the slow way first. This is not the slow part of
+                    // the program anyway...
+                    int x = N/M; while(GCD(x, n) > 1) {x = x/GCD(x,n);}     // now x = (N/M) / GCD(N/M, n^oo)
+                    int y = N; while(GCD(y, M) > 1) {y = y/GCD(y,M);}       // now y = N / GCD(N, M^oo)
+                    for(int b : divisors(y)) {
+                        if(b == 1 && N == M) continue;
+                        if(n % (b*b) == 0) {
+                            int mu = mobius(b);
+                            traces[N][n] -= mu * (double)divisor_counts[x] * chi_values[q][b % q] * (double)b * traces[M][n/(b*b)];
+                            //if(mu == 1) {
+                                //long z = nmod_mul(divisor_counts[x], chi_values[q][b % q], modp);
+                                //z = nmod_mul(z, b, modp);
+                                //z = nmod_mul(z, traces[M][n/(b*b)], modp);
+                                //traces[N][n] = nmod_sub(traces[N][n], z, modp);
+                            //}
+                            //else if(mu == -1) {
+                            //    long z = nmod_mul(divisor_counts[x], chi_values[q][b % q], modp);
+                            //    z = nmod_mul(z, b, modp);
+                            //    z = nmod_mul(z, traces[M][n/(b*b)], modp);
+                            //    traces[N][n] = nmod_add(traces[N][n], z, modp);
+                            //}
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    delete [] divisor_counts;
+}
+
+cmatrix_t newspace_basis_weight2(vector<int>& rows, int& ncoeffs, int level, DirichletCharacter& chi, int verbose) {
+    //
+    // Compute ncoeffs coefficients of a basis for S^new_2(level, chi).
+    //
+    //
+
+    if(!chi.is_even()) {
+        return cmatrix_t(0,0);
+    }
+    long primitive_index;
+    int q = chi.conductor(&primitive_index);
+
+    long * chi_values_modp = new long[level];
+    long p = 0;
+    chi.values_mod_p(p, chi_values_modp);
+
+    complex<double> ** chi_values = new complex<double>*[level + 1];
+
+    if(verbose > 0) {
+        cerr << "Computing bases of" << endl;
+    }
+    vector<int> sublevels;                     //
+    for(int M : divisors(level)) {             // We fill sublevels with all of the M such that
+        if(M % q == 0) {                       // q | M | level.
+            if(M > 1) sublevels.push_back(M);  //
+            DirichletGroup G(M);
+            DirichletCharacter psi = G.character(G.index_from_primitive_character(q, primitive_index));
+            chi_values[M] = new complex<double>[M];
+            //psi.values_mod_p(p, chi_values[M]);
+            for(int k = 0; k < M; k++) {
+                chi_values[M][k] = psi.value(k);
+            }
+            if(verbose > 0) {
+                cerr << "    " << "S_2^new(" << M << ", " << psi.m << ") mod " << endl;
+            }
+        }
+    }
+    long cuspform_dimension;
+    trace_Tn_modp_unsieved_weight2(&cuspform_dimension, 1, 2, level, p, chi_values_modp, chi);  // XXX
+                                                                            // I'm assuming that the chosen prime
+                                                                            // is large enough that the dimension
+                                                                            // is actually the same as the dimension
+                                                                            // mod p.
+
+    if(ncoeffs == 0) ncoeffs = 5*cuspform_dimension;        // It is unlikely that we actually need this many
+    int max_trace = (cuspform_dimension + 20)* ncoeffs;        // traces, but it doesn't hurt much, and maybe it
+                                                                            // better to not have to go back for more.
+
+    vector< complex<double> > * traces = new vector< complex<double> >[level + 1];
+
+    for(int M : sublevels) {
+        if(verbose > 0)
+            cerr << "Computing " << max_trace << " traces of Tn on " << " S_2(" << M << ", chi)." << endl;
+        traces[M] = vector< complex<double> >(max_trace + 1);                                               // We compute the (unsieved) traces
+        trace_Tn_unsieved_weight2(traces[M].data(), 0, max_trace + 1, M, chi_values[M], chi, verbose);   // for each sublevel.
+    }
+
+    if(verbose > 0) cerr << "Sieving..." << endl;
+    sieve_trace_Tn_on_weight2_for_newspaces(traces, 0, max_trace + 1, level, chi_values, chi);  // Then we sieve.
+
+    if(verbose > 0) cerr << "And computing a basis..." << endl;
+
+    int new_dimension = (int)round(real(traces[level][1]));
+    int nrows = new_dimension;
+    cmatrix_t basis(nrows,ncoeffs);
+
+    int m = 1, n = 1;
+    for(int row_number = 0; row_number < nrows; row_number++) {
+        //cout << row_number << " " << nrows << endl;
+        while(GCD(m, level) > 1) m++;
+        rows.push_back(m);
+        n = 1;
+        for(int column_number = 0; column_number < ncoeffs; column_number++) {
+            //cout << column_number << " " << nrows << endl;
+            //while(GCD(n, level) > 1) n++;
+            complex<double> z = trace_TmTn(traces[level].data(), chi_values[level], 2, level, m, n);
+            basis(row_number, column_number) = z;
+            n++;
+        }
+        m++;
+    }
+
+    auto LU = basis.transpose().fullPivLu();
+    if(LU.rank() < new_dimension) {
+        rows.clear();
+        int m = 1, n = 1;
+        for(int row_number = 0; row_number < nrows;) {
+            //cout << row_number << " " << nrows << endl;
+            while(GCD(m, level) > 1) m++;
+            n = 1;
+            for(int column_number = 0; column_number < ncoeffs; column_number++) {
+                //cout << column_number << " " << nrows << endl;
+                //while(GCD(n, level) > 1) n++;
+                complex<double> z = trace_TmTn(traces[level].data(), chi_values[level], 2, level, m, n);
+                basis(row_number, column_number) = z;
+                n++;
+            }
+            if(basis.topRows(row_number + 1).fullPivLu().rank() == row_number + 1) {
+                rows.push_back(m);
+                row_number++;
+            }
+            m++;
+        }
+    }
+
+    int coefficients_needed_for_full_rank = new_dimension;
+    LU = basis.leftCols(coefficients_needed_for_full_rank).transpose().fullPivLu();
+    while(LU.rank() < new_dimension) {
+        coefficients_needed_for_full_rank++;
+        if(coefficients_needed_for_full_rank > ncoeffs) {
+            cerr << "didn't get full rank." << endl;
+            cerr << "looking for rank " << new_dimension << endl;
+            cerr << "rank is " << LU.rank() << endl;
+            cerr << "'basis' is" << endl;
+            cerr << basis << endl;
+            exit(0);
+        }
+        LU = basis.leftCols(coefficients_needed_for_full_rank).transpose().fullPivLu();
+        LU.setThreshold(1e-7);
+    }
+    coefficients_needed_for_full_rank += 5;
+    LU = basis.leftCols(coefficients_needed_for_full_rank).transpose().fullPivLu();
+
+    //cout << basis.leftCols(new_dimension) << endl;
+    //cout << basis.fullPivLu().rank() << endl;
+    cmatrix_t Tn_basis = cmatrix_t::Zero(new_dimension, coefficients_needed_for_full_rank);
+    cout << coefficients_needed_for_full_rank << endl;
+
+    bool found_unique_eigenvalues = false;
+    cmatrix_t basis_transformation;
+    if(new_dimension == 0) {
+        found_unique_eigenvalues = true;
+        basis_transformation = cmatrix_t(0,0);
+    }
+    cout << basis << endl;
+    n = 7;
+    while(!found_unique_eigenvalues) {
+        int max_coeff_needed = coefficients_needed_for_full_rank * n;
+        if(max_coeff_needed > ncoeffs) {
+            cerr << "need to compute more coefficients." << endl;
+            exit(0);
+        }
+        for(int j = 0; j < new_dimension; j++) {
+            for(int m = 1; m <= coefficients_needed_for_full_rank; m++) {
+                for(auto d : divisors(GCD(m, n))) {
+                    Tn_basis(j, m - 1) += chi.value(d) * (double)d * basis(j, m*n/(d*d) - 1);
+                }
+            }
+        }
+
+        //cout << basis << endl;
+        cout << Tn_basis << endl;
+
+        cmatrix_t Tn = LU.solve(Tn_basis.transpose());
+        cout << "T" << n << ": " << endl;
+        cout << Tn << endl;
+        ComplexEigenSolver<cmatrix_t> ces;
+        //ces.compute(basis.leftCols(new_dimension).inverse()*Tn);
+        ces.compute(Tn);
+        cout << ces.eigenvalues() << endl;
+        if(has_unique_entries(ces.eigenvalues().data(), ces.eigenvalues().size())) {
+            found_unique_eigenvalues = true;
+        }
+        else {
+            found_unique_eigenvalues = false;
+        }
+        if(found_unique_eigenvalues) {
+            cmatrix_t z = ces.eigenvectors();
+            z.transposeInPlace();
+            cmatrix_t eigenforms = z * basis.leftCols(new_dimension);
+            for(int k = 0; k < z.rows(); k++) {
+                z.row(k) = z.row(k)/eigenforms(k,0);
+            }
+            basis_transformation = z;
+        }
+        n++;
+    }
+
+    cout << basis_transformation << endl;
+
+    for(int M : sublevels) {
+        delete [] chi_values[M];
+    }
+
+    delete [] chi_values;
+    delete [] traces;
+
+    return basis_transformation * basis;
+}
+
+
+
 
 int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, long& p, DirichletCharacter& chi, int extra_rows, int verbose) {
     //
@@ -708,7 +1093,7 @@ int newspace_bases_weight2_modp(nmod_mat_t * bases, int& ncoeffs, int level, lon
             }
         }
     }
- 
+
     for(int M : sublevels) {
         delete [] chi_values[M];
     }
@@ -725,8 +1110,8 @@ void cuspform_basis_weight2_modp(nmod_mat_t basis, int ncoeffs, int level, long&
     nmod_mat_init(basis, cuspform_dimension, ncoeffs, p);
 
     int q = chi.conductor();
-    vector<int> sublevels;                     // 
-    for(int M : divisors(level)) {             // We fill sublevels with all of the M such that 
+    vector<int> sublevels;                     //
+    for(int M : divisors(level)) {             // We fill sublevels with all of the M such that
         if(M % q == 0) {                       // q | M | level.
             if(M > 1) sublevels.push_back(M);  //
         }

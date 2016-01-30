@@ -2,8 +2,8 @@ CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -fpermissive -Wall
-LDLIBS = -L$(HOME)/lib -lfftw3 -lflint
+CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall
+LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb
 
 OBJECTS = trace-formula.o \
 	  weight1.o \
@@ -11,6 +11,7 @@ OBJECTS = trace-formula.o \
 	  trace-unsieved.o \
 	  trace-sieved.o \
 	  trace-TnTm.o \
+	  newspace-basis.o \
 	  classnumbers.o
 
 EXECUTABLES = weight1 \
@@ -18,6 +19,7 @@ EXECUTABLES = weight1 \
 	      trace-unsieved \
 	      trace-sieved \
 	      trace-TnTm \
+	      newspace-basis
 
 all: $(EXECUTABLES)
 
@@ -38,6 +40,7 @@ test-tf: trace-formula.o test-tf.o classnumbers.o
 trace-unsieved: trace-formula.o trace-unsieved.o classnumbers.o
 trace-sieved: trace-formula.o trace-sieved.o classnumbers.o
 trace-TnTm: trace-formula.o trace-TnTm.o classnumbers.o
+newspace-basis: trace-formula.o newspace-basis.o classnumbers.o
 
 clean:
 	-rm $(OBJECTS)

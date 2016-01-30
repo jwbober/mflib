@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <complex>
 
 #include "flint/nmod_mat.h"
 
@@ -12,6 +13,7 @@ using std::vector;
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::complex;
 
 void print_nmod_mat_t(nmod_mat_t M) {
     int nrows = nmod_mat_nrows(M);
@@ -49,32 +51,50 @@ int main(int argc, char ** argv) {
     long primitive_index;
     int q = chi.conductor(&primitive_index);
     long ** chi_values = new long*[level + 1];
+    complex<double> ** chi_zvalues = new complex<double>*[level + 1];
 
-    vector<int> sublevels;                     // 
-    for(int M : divisors(level)) {             // We fill sublevels with all of the M such that 
+    vector<int> sublevels;                     //
+    for(int M : divisors(level)) {             // We fill sublevels with all of the M such that
         if(M % q == 0) {                       // q | M | level.
             if(M > 1) sublevels.push_back(M);  //
             DirichletGroup G(M);
             DirichletCharacter psi = G.character(G.index_from_primitive_character(q, primitive_index));
             chi_values[M] = new long[M];
+            chi_zvalues[M] = new complex<double>[M];
             psi.values_mod_p(p, chi_values[M]);
+            for(int k = 0; k < M; k++) {
+                chi_zvalues[M][k] = psi.value(k);
+            }
         }
     }
-    
+
     vector<long> * traces = new vector<long>[level + 1];
+    vector<complex<double>> * ztraces = new vector<complex<double>>[level + 1];
 
     for(int M : sublevels) {                                                                            //
         traces[M] = vector<long>(end + 1);                                                         // We compute the (unsieved) traces
+        ztraces[M] = vector<complex<double>>(end + 1);
         trace_Tn_modp_unsieved_weight2(traces[M].data(), 0, end + 1, M, p, chi_values[M], chi);   // for each sublevel.
+        trace_Tn_unsieved_weight2(ztraces[M].data(), 0, end + 1, M, chi_zvalues[M], chi);
     }                                                                                                   //
 
     sieve_trace_Tn_modp_on_weight2_for_newspaces(traces, 0, end + 1, level, p, chi_values, chi);  // Then we sieve.
-    
+    sieve_trace_Tn_on_weight2_for_newspaces(ztraces, 0, end + 1, level, chi_zvalues, chi);  // Then we sieve.
+
     cout << p << endl;
     for(int M : sublevels) {
-        cout << M << " ";
+        cout << M << "\t";
         for(int k = start; k <= end; k++) {
             cout << traces[M][k];
+            if(k < end) cout << "\t";
+        }
+        cout << endl;
+    }
+
+    for(int M : sublevels) {
+        cout << M << "\t";
+        for(int k = start; k <= end; k++) {
+            cout << ztraces[M][k];
             if(k < end) cout << "\t";
         }
         cout << endl;

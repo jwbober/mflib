@@ -3,9 +3,11 @@
 
 #include <vector>
 #include <complex>
+#include <Eigen/Dense>
 
 #include <characters.h>
 #include <flint/nmod_mat.h>
+#include "acb_mat.h"
 
 
 void trace_Tn_unsieved_weight2(
@@ -13,6 +15,7 @@ void trace_Tn_unsieved_weight2(
         int start,
         int end,
         int level,
+        std::complex<double> * chi_values,
         DirichletCharacter& chi,
         int verbose = 0);
 
@@ -35,6 +38,17 @@ void sieve_trace_Tn_modp_on_weight2_for_newspaces(
         long ** chi_values,
         DirichletCharacter& chi,
         int verbose = 0);
+
+void sieve_trace_Tn_on_weight2_for_newspaces(
+        std::vector< std::complex<double> > * traces,
+        int start,
+        int end,
+        int level,
+        std::complex<double> ** chi_values,
+        DirichletCharacter& chi,
+        int verbose = 0);
+
+
 
 int newspace_bases_weight2_modp(
         nmod_mat_t * bases,
@@ -61,5 +75,12 @@ long trace_TmTn_mod_p(
         int m,
         int n,
         long p);
+
+Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> newspace_basis_weight2(
+        std::vector<int>& rows,
+        int& ncoeffs,
+        int level,
+        DirichletCharacter& chi,
+        int verbose = 0);
 
 #endif
