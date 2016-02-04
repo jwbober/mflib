@@ -988,9 +988,14 @@ inline void DirichletCharacter::values_mod_p(long & p, long * chi_values) {
     //
     // If p == 0, we choose an appropriate prime and set p to that prime.
     //
-    
+
     int q = parent->q;
-    int order = order_mod(m, q);
+    int order;
+    if(m == 0)
+        order = 1;
+    else
+        order = order_mod(m, q);
+
     int phi_q = parent->phi_q;
     if(p == 0) {
         p = order + 1;

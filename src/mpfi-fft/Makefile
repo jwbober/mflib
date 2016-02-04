@@ -1,6 +1,6 @@
 all: test-mpfi-fft mpfi-fft.o
 
-ROOT=/files/math/projects/ntlib
+ROOT=../../
 LIB=${ROOT}/lib
 INCLUDE=${ROOT}/include
 

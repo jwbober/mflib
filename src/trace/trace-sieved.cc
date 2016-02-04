@@ -91,13 +91,13 @@ int main(int argc, char ** argv) {
         cout << endl;
     }
 
-    for(int M : sublevels) {
-        cout << M << "\t";
-        for(int k = start; k <= end; k++) {
-            cout << ztraces[M][k];
-            if(k < end) cout << "\t";
-        }
-        cout << endl;
-    }
+    //for(int M : sublevels) {
+    //    cout << M << "\t";
+    //    for(int k = start; k <= end; k++) {
+    //        cout << ztraces[M][k];
+    //        if(k < end) cout << "\t";
+    //    }
+    //    cout << endl;
+    //}
     return 0;
 }

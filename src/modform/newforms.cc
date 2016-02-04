@@ -1,29 +1,11 @@
-#include <iostream>
-#include <cstdlib>
-#include <complex>
-#include <vector>
-#include <string>
-#include <iomanip>
-#include <fstream>
-
-#include "acb_mat.h"
-
-#include "characters.h"
-
-#include "trace-formula.h"
+#include "modform_cc.h"
 #include "classnumbers.h"
 
-using std::cout;
-using std::endl;
-using std::vector;
-using std::complex;
-using std::string;
-using std::setprecision;
-using std::to_string;
-using std::ofstream;
-using std::cerr;
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
-typedef Eigen::Matrix<complex<double>, Eigen::Dynamic, Eigen::Dynamic> cmatrix_t;
+using namespace std;
 
 complex<double> Lsign(const Eigen::Matrix<complex<double>, 1, Eigen::Dynamic> &coeffs, int level, int verbose) {
     complex<double> S1 = 0.0, S2 = 0.0, S3 = 0.0, S4 = 0.0;
@@ -31,7 +13,7 @@ complex<double> Lsign(const Eigen::Matrix<complex<double>, 1, Eigen::Dynamic> &c
     complex<double> B = 1.1;
     for(int k = 1; k < coeffs.size(); k++) {
         complex<double> an = coeffs[k];
-        double n = k + 1;
+        double n = k;
         S1 += an/n * exp(-2 * M_PI * n * A/sqrt(level));
         S2 += conj(an)/n * exp(-2 * M_PI * n/(A*sqrt(level)));
         S3 += an/n * exp(-2 * M_PI * n * B/sqrt(level));
@@ -44,31 +26,35 @@ complex<double> Lsign(const Eigen::Matrix<complex<double>, 1, Eigen::Dynamic> &c
 }
 
 int main(int argc, char ** argv) {
+    int level;
+    int chi_number;
+    int weight;
+    int ncoeffs;
+
     init_classnumbers();
 
-    int level = atoi(argv[1]);
-    int chi_number = atoi(argv[2]);
-    int ncoeffs = atoi(argv[3]);
-    if(ncoeffs < level) {
-        ncoeffs = level + 1;
-    }
+    level = atoi(argv[1]);
+    chi_number = atoi(argv[2]);
+    weight = atoi(argv[3]);
+    ncoeffs = atoi(argv[4]);
+
     int verbose = 0;
-    if(argc > 4) verbose = atoi(argv[4]);
+    if(argc > 5) verbose = atoi(argv[5]);
 
     DirichletGroup G(level);
     if(GCD(level, chi_number) != 1) return 0;
     DirichletCharacter chi = G.character(chi_number);
-    if(!chi.is_even()) return 0;
+    if(chi.is_even() && weight % 2 == 1) return 0;
+    if(!chi.is_even() && weight % 2 == 0) return 0;
 
-    vector<int> rows;
+    cuspforms_cc * S = get_cuspforms_cc(chi, weight, verbose);
+    cmatrix_t newforms = S->newforms(ncoeffs);
 
-    cmatrix_t newforms = newspace_basis_weight2(rows, ncoeffs, level, chi, verbose);
-    //cout << newforms << endl;
-    cout << newforms << endl;
-    return 0;
-
-    cout << setprecision(17);
-
+    if(verbose > 1) {
+        cout << S->newspace_basis(ncoeffs) << endl;
+        cout << endl;
+        cout << newforms << endl << endl;
+    }
     int dim = newforms.rows();
     for(int k = 0; k < dim; k++) {
         string filename = "mf/" + to_string(level) + "." + to_string(chi_number) + "." + to_string(k) + ".lcalc";
@@ -91,12 +77,13 @@ int main(int argc, char ** argv) {
         //}
         lcalc_file  << real(sign) << " " << imag(sign) << endl
                     << 0 << endl;
-        for(int j = 0; j < ncoeffs; j++) {
-            complex<double> z = newforms(k,j)/sqrt(j+1);
+        for(int j = 1; j < ncoeffs; j++) {
+            complex<double> z = newforms(k,j)/sqrt(j);
             lcalc_file << real(z) << " " << imag(z) << endl;
         }
         lcalc_file.close();
     }
+
 
     return 0;
 }

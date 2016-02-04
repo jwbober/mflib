@@ -629,6 +629,7 @@ static long CRT(long a, long b, long m, long n) {
 }
 
 static long CRT(std::vector<long> a, std::vector<long> n) {
+    if(a.size() == 0) return 0;
     long x = a[0];
     long q = n[0];
     for(int k = 1; k < a.size(); k++) {
