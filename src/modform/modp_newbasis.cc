@@ -35,7 +35,9 @@ int main(int argc, char ** argv) {
     cout << endl;
     for(int k = 0; k < S->new_dimension(); k++) {
         for(int j = 0; j < ncoeffs; j++) {
-            cout << nmod_mat_entry(basis, k, j) << " ";
+            long a = nmod_mat_entry(basis, k, j);
+            if(a > p/2) a-= p;
+            cout << a << " ";
         }
         cout << endl;
     }

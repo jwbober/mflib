@@ -36,10 +36,13 @@ int main(int argc, char ** argv) {
         }
         cout << endl;
     }
-    cout << S->level << "\t";
+    cout << S->level << endl << endl;
     for(int k = 1; k <= number_of_traces; k++) {
-        cout << S->traces[k];
-        if(k < number_of_traces) cout << "\t";
+        long a = S->traces[k];
+        if(a > p/2) a -= p;
+        cout << a << endl;
+        //cout << S->traces[k];
+        //if(k < number_of_traces) cout << "\t";
     }
     cout << endl;
     return 0;

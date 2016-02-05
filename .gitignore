@@ -24,3 +24,16 @@ trace-unsieved
 a.out
 test-tf
 write-classnumbers
+mf
+commands
+write-commands.py
+commands*
+newspace-basis
+output
+plot.py
+character-info
+chimaxsum
+modp_newbasis
+modp_trace
+newforms
+check2

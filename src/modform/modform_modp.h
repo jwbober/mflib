@@ -61,10 +61,10 @@ public:
 
 
     cuspforms_modp(DirichletCharacter &_chi, const int w, long _p, int _verbose = 0) {
-        if(w != 2) {
-            std::cerr << "only weight 2 is supported at the moment..." << std::endl;
-            exit(1);
-        }
+        //if(w != 2) {
+        //    std::cerr << "only weight 2 is supported at the moment..." << std::endl;
+        //    exit(1);
+        //}
         verbose = _verbose;
         chi = _chi.m;
         level = _chi.parent->q;

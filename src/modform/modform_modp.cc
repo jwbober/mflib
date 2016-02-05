@@ -101,7 +101,7 @@ long cuspforms_modp::evalpoly(long t, long n) {
     n = n % p; if(n < 0) n += p;
     switch(k) {
         case 0: return 1;
-        case 1: return t % p;
+        case 1: return t;
         case 2: { // t^2 - n
             long z = nmod_mul(t, t, modp);
             return nmod_sub(z, n, modp);
@@ -130,7 +130,7 @@ long cuspforms_modp::evalpoly(long t, long n) {
             long z1 = nmod_mul(3, t, modp);
             z1 = nmod_mul(z1, n2, modp);
             long z2 = nmod_mul(4, t3, modp);
-            z2 = nmod_mul(n, t3, modp);
+            z2 = nmod_mul(n, z2, modp);
             long z = nmod_sub(t5, z2, modp);
             return nmod_add(z, z1, modp);
         }
@@ -155,7 +155,7 @@ long cuspforms_modp::evalpoly(long t, long n) {
     long z1 = nmod_mul(3, t, modp);
     z1 = nmod_mul(z1, n2, modp);
     long z2 = nmod_mul(4, t3, modp);
-    z2 = nmod_mul(n, t3, modp);
+    z2 = nmod_mul(n, z2, modp);
     z = nmod_sub(t5, z2, modp);
     z = nmod_add(z, z1, modp);
     // val[1]=t*t*t*t*t - 4*t*t*t*n + 3*t*n*n;
@@ -271,18 +271,20 @@ void cuspforms_modp::compute_traces(int end) {
     long one_over_two = nmod_inv(2, modp);
 
     long A1 = nmod_mul(psi_table[level], one_over_twelve, modp);
+    //cout << A1 << endl;
+    A1 = nmod_mul(A1, weight - 1, modp);
+    //cout << A1 << endl;
     int z = (int)sqrt(start);                               //
     while(z*z < start) z++;                                 // A1 is only nonzero when n is a square,
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
         //traces[z*z] += A1 * chi_values[z % level] % p;    // depends on n at all.
-        //long a;
-        //NMOD_RED(a, z, modp);
-        //a = PowerMod(a, weight - 2, p);
-        //long a = nmod_pow(z, k - 2, modp);
-        NMOD_ADDMUL(traces[z*z], A1, chi_values[z % level], modp); // traces[z*z] += A1 * chi(z) mod p
+        long a = z % p;
+        a = PowerMod(a, weight - 2, p);
+        a = nmod_mul(a, A1, modp);
+        NMOD_ADDMUL(traces[z*z], a, chi_values[z % level], modp); // traces[z*z] += A1 * chi(z) mod p
     }
-
-    //cout << traces[1] << endl;
+    //cout << "After A1: trace(T1) = " << traces[1] << endl;
+    //cout << "After A1: trace(T2) = " << traces[2] << endl;
     // computation of A2
     //cout << "computing A2 for level " << level << endl;
 
@@ -329,6 +331,7 @@ void cuspforms_modp::compute_traces(int end) {
                 int D = 4*n - t*t;
                 int k = square_divisors_indices[D];
                 int f = square_divisors[k];
+                long polyterm = evalpoly(t, n);
                 do {
                     int g;
                     if(f == 1) {
@@ -348,6 +351,7 @@ void cuspforms_modp::compute_traces(int end) {
                         if(D/(f*f) == 3) z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
                         if(D/(f*f) == 4) z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
                         z = nmod_mul(z, one_over_two, modp);
+                        z = nmod_mul(z, polyterm, modp);
                         traces[n] = nmod_sub(traces[n], z, modp);
                     }
                     k++;
@@ -360,6 +364,8 @@ void cuspforms_modp::compute_traces(int end) {
     delete [] square_divisors_indices;
     if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
+    //cout << "After A2: trace(T1) = " << traces[1] << endl;
+    //cout << "After A2: trace(T2) = " << traces[2] << endl;
 
     if(verbose > 0) { cerr << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
     for(int d = 1; d*d < end; d++) {
@@ -402,16 +408,19 @@ void cuspforms_modp::compute_traces(int end) {
                 }
             }
             if(d*d == n) a = nmod_mul(a, one_over_two, modp);
-            a = nmod_mul(a, d, modp);
+            long dpow = PowerMod(d, weight - 1, p);
+            a = nmod_mul(a, dpow, modp);
             traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
     }
     if(verbose > 0) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
+    //cout << "After A3: trace(T1) = " << traces[1] << endl;
+    //cout << "After A3: trace(T2) = " << traces[2] << endl;
 
     //cout << "computing A4 for level " << level << endl;
     // computation of A4
-    if(chi == 1) {
+    if(chi == 1 && weight == 2) {
         for(int t = 1; t < end; t++) {
             int starting_n = start;
             if(starting_n % t != 0) {
@@ -426,6 +435,8 @@ void cuspforms_modp::compute_traces(int end) {
             }
         }
     }
+    //cout << "After A4: trace(T1) = " << traces[1] << endl;
+    //cout << "After A4: trace(T2) = " << traces[2] << endl;
 
     // now we sieve.
 
@@ -449,15 +460,16 @@ void cuspforms_modp::compute_traces(int end) {
                     if(b == 1 && N == M) continue;
                     if(n % (b*b) == 0) {
                         int mu = mobius(b);
+                        long bpow = PowerMod(b, weight - 1, p);
                         if(mu == 1) {
                             long z = nmod_mul(divisor_counts[x], chip_values[b % q], modp);
-                            z = nmod_mul(z, b, modp);
+                            z = nmod_mul(z, bpow, modp);
                             z = nmod_mul(z, subspace->traces[n/(b*b)], modp);
                             traces[n] = nmod_sub(traces[n], z, modp);
                         }
                         else if(mu == -1) {
                             long z = nmod_mul(divisor_counts[x], chip_values[b % q], modp);
-                            z = nmod_mul(z, b, modp);
+                            z = nmod_mul(z, bpow, modp);
                             z = nmod_mul(z, subspace->traces[n/(b*b)], modp);
                             traces[n] = nmod_add(traces[n], z, modp);
                         }
