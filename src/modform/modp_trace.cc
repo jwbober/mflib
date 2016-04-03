@@ -4,6 +4,7 @@
 #include <iostream>
 
 using namespace std;
+extern long classnumber_tablesize;
 
 int main(int argc, char ** argv) {
     int level;
@@ -13,6 +14,7 @@ int main(int argc, char ** argv) {
     int number_of_traces;
 
     init_classnumbers();
+    cout << classnumber_tablesize << endl;
 
     level = atoi(argv[1]);
     chi_number = atoi(argv[2]);

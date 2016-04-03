@@ -10,7 +10,15 @@
 #include <fftw3.h>
 
 #ifdef USE_MPFI
+#ifdef USE_ARB
+#error "Can only use one of MPFI and ARB."
+#endif
 #include "mpfi_fft.h"
+#endif
+
+#ifdef USE_ARB
+#include "acb.h"
+const long prec = 200;
 #endif
 
 inline std::complex<double> e(double z) {
@@ -34,6 +42,9 @@ public:
     std::complex<double> max(long* index);
     std::complex<double> sum(long end);
     std::complex<double> value(long n);
+#ifdef USE_ARB
+    void value(acb_t out, long n);
+#endif
     bool is_primitive();
     bool is_primitive_at_two();
     bool is_primitive_at_odd_part();
@@ -57,7 +68,7 @@ public:
     long q_even;
 
     int k;          // the number of odd prime factors of q
- 
+
     std::vector<long> * primes;
     std::vector<int> * exponents;
     std::vector<long> * generators;
@@ -71,7 +82,7 @@ public:
                     //      where g[j] is a primitive root mod p[j]**e[j],
                     //      and p[j] is the j-th prime factor of q.
                     //      (We don't actually store g[k], p[j], or e[j] anywhere.)
-    
+
     long * B;
 
     long * PHI;     // PHI[j] = phi(q/phi(p[j]**e[j])). This will make it easier
@@ -83,7 +94,7 @@ public:
 
     std::complex<double> * zeta_powers_odd;     // zeta_powers[n] == e(n/phi(q))
     std::complex<double> * zeta_powers_even;     // zeta_powers[n] == e(n/phi(q))
-    
+
     long index_from_primitive_character(long q0, long m);
 
 #ifdef USE_MPFI
@@ -94,6 +105,13 @@ public:
     mpfi_c_t twopii_on_qeven;
 
     void DFTsum(mpfi_c_t * out, mpfi_c_t * in);
+#endif
+
+#ifdef USE_ARB
+    acb_t * zeta_powers_odd_acb;
+    acb_t * zeta_powers_even_acb;
+    acb_t twopii_on_qodd;
+    acb_t twopii_on_qeven;
 #endif
 
     void DFTsum(std::complex<double> * out, std::complex<double> * in);
@@ -131,7 +149,7 @@ public:
             factors(q_odd, primes, exponents);
             k = primes->size();
             phi_q_odd = euler_phi(q_odd);
-            
+
             PHI = new long[k];
             A = new long*[q_odd];
             for(int n = 0; n < q_odd; n++) {
@@ -141,6 +159,9 @@ public:
 
 #ifdef USE_MPFI
             zeta_powers_odd_mpfi = new mpfi_c_t[phi_q_odd];
+#endif
+#ifdef USE_ARB
+            zeta_powers_odd_acb = new acb_t[phi_q_odd];
 #endif
 
             for(long j = 0; j < k; j++) {
@@ -157,7 +178,7 @@ public:
                     a = (a * g) % x;
                 }
             }
-        
+
             //
             // for each m, 0 <= m < q, if (m,q) > 1, store
             // this as a flag in A[m][0]
@@ -176,14 +197,29 @@ public:
             mpfi_div_ui(twopii_on_qodd[0].im, twopii_on_qodd[0].im, phi_q_odd);
 #endif
 
+#ifdef USE_ARB
+            acb_init(twopii_on_qodd);
+            acb_zero(twopii_on_qodd);
+            arb_const_pi(acb_imagref(twopii_on_qodd), prec);
+            acb_mul_ui(twopii_on_qodd, twopii_on_qodd, 2ul, prec);
+            acb_div_ui(twopii_on_qodd, twopii_on_qodd, phi_q_odd, prec);
+#endif
+
             for(unsigned long n = 0; n < phi_q_odd; n++) {
                 zeta_powers_odd[n] = e(n/(double)phi_q_odd);
 
 #ifdef USE_MPFI
-                mpfi_c_init(zeta_powers_odd_mpfi[n]);
-                mpfi_c_mul_ui(zeta_powers_odd_mpfi[n], twopii_on_qodd, n);
-                mpfi_c_exp(zeta_powers_odd_mpfi[n], zeta_powers_odd_mpfi[n]);
+            mpfi_c_init(zeta_powers_odd_mpfi[n]);
+            mpfi_c_mul_ui(zeta_powers_odd_mpfi[n], twopii_on_qodd, n);
+            mpfi_c_exp(zeta_powers_odd_mpfi[n], zeta_powers_odd_mpfi[n]);
 #endif
+
+#ifdef USE_ARB
+            acb_init(zeta_powers_odd_acb[n]);
+            acb_mul_ui(zeta_powers_odd_acb[n], twopii_on_qodd, n, prec);
+            acb_exp(zeta_powers_odd_acb[n], zeta_powers_odd_acb[n], prec);
+#endif
+
 
             }
         } // end of initialization of everything having to do
@@ -191,7 +227,7 @@ public:
         else {
             phi_q_odd = 1;
         }
-        
+
         if(q_even > 4) {
             B = new long[q_even];
             zeta_powers_even = new std::complex<double>[q_even/4];
@@ -206,6 +242,17 @@ public:
             mpfi_div_ui(twopii_on_qeven[0].im, twopii_on_qeven[0].im, q_even/4);
 #endif
 
+#ifdef USE_ARB
+            zeta_powers_even_acb = new acb_t[q_even/4];
+
+            acb_init(twopii_on_qeven);
+            acb_zero(twopii_on_qeven);
+            arb_const_pi(acb_imagref(twopii_on_qeven), prec);
+            acb_mul_ui(twopii_on_qeven, twopii_on_qeven, 2ul, prec);
+            acb_div_ui(twopii_on_qeven, twopii_on_qeven, q_even/4, prec);
+#endif
+
+
             for(unsigned long n = 0; n < q_even/4; n++) {
                 zeta_powers_even[n] = e(4*n/double(q_even));
 
@@ -213,6 +260,12 @@ public:
                 mpfi_c_init(zeta_powers_even_mpfi[n]);
                 mpfi_c_mul_ui(zeta_powers_even_mpfi[n], twopii_on_qeven, n);
                 mpfi_c_exp(zeta_powers_even_mpfi[n], zeta_powers_even_mpfi[n]);
+#endif
+
+#ifdef USE_ARB
+                acb_init(zeta_powers_even_acb[n]);
+                acb_mul_ui(zeta_powers_even_acb[n], twopii_on_qeven, n, prec);
+                acb_exp(zeta_powers_even_acb[n], zeta_powers_even_acb[n], prec);
 #endif
 
             }
@@ -245,6 +298,14 @@ public:
             mpfi_c_clear(twopii_on_qodd);
 #endif
 
+#ifdef USE_ARB
+            for(int n = 0; n < phi_q_odd; n++) {
+                acb_clear(zeta_powers_odd_acb[n]);
+            }
+            delete [] zeta_powers_odd_acb;
+            acb_clear(twopii_on_qodd);
+#endif
+
             delete [] A;
             delete [] PHI;
             delete primes;
@@ -261,6 +322,14 @@ public:
             }
             delete [] zeta_powers_even_mpfi;
             mpfi_c_clear(twopii_on_qeven);
+#endif
+
+#ifdef USE_ARB
+            for(int n = 0; n < q_even/4; n++) {
+                acb_clear(zeta_powers_even_acb[n]);
+            }
+            delete [] zeta_powers_even_acb;
+            acb_clear(twopii_on_qeven);
 #endif
         }
 
@@ -279,12 +348,12 @@ public:
             if(x > 4294967296)
                 x = x % phi_q_odd;
         }
-        if(x >= phi_q_odd) 
+        if(x >= phi_q_odd)
             x = x % phi_q_odd;
-        
+
         return x;
     }
-    
+
     long chi_even_exponent(long m, long n) {
         long x = B[m]*B[n];
         if(B[m-1] == -1 && B[n-1] == -1)
@@ -366,7 +435,6 @@ public:
 
 #ifdef USE_MPFI
     void chi(mpfi_c_t out, long m, long n) {
-        std::complex<double> odd_part = 1.0;
         if(q_even > 1) {
             if(m % 2 == 0 || n % 2 == 0) {
                 mpfi_c_zero(out);
@@ -402,6 +470,52 @@ public:
         }
     }
 #endif
+
+#ifdef USE_ARB
+    void chi(acb_t out, long m, long n) {
+        if(q_even > 1) {
+            if(m % 2 == 0 || n % 2 == 0) {
+                acb_zero(out);
+                return;
+            }
+            else if(q_even == 2) {
+                acb_set_ui(out, 1);
+            }
+            else if(q_even == 4) {
+                if(m % 4 == 3 && n % 4 == 3) {
+                    acb_set_si(out, -1);
+                    //arb_set_si(acb_realref(out), -1, prec);
+                    //arb_set_si(acb_imagref(out), 0, prec);
+                    //mpfi_set_si(out[0].im, 0);
+                }
+                else {
+                    acb_set_ui(out, 1);
+                    //mpfi_c_set_ui(out, 1, 0);
+                }
+            }
+            else {
+                acb_set(out, zeta_powers_even_acb[chi_even_exponent(m % q_even, n % q_even)]);
+                //mpfi_c_set(out, zeta_powers_even_mpfi[chi_even_exponent(m % q_even, n % q_even)]);
+            }
+        }
+        //else mpfi_c_set_ui(out, 1, 0);
+        else acb_set_ui(out, 1);
+
+        if(m >= q_odd)
+            m %= q_odd;
+        if(n >= q_odd);
+            n %= q_odd;
+        if(q_odd > 1) {
+            if(A[m][0] == -1 || A[n][0] == -1)
+                acb_zero(out);
+            else
+                //mpfi_c_mul(out, out, zeta_powers_odd_mpfi[chi_odd_exponent(m, n)]);
+                acb_mul(out, out, zeta_powers_odd_acb[chi_odd_exponent(m, n)], prec);
+        }
+    }
+#endif
+
+
 
     DirichletCharacter character(long m) {
         return DirichletCharacter(this, m);
@@ -826,6 +940,13 @@ inline std::complex<double> DirichletCharacter::value(long n) {
     //    return 0;
     //return parent->zeta_powers[exponent(n)];
 }
+
+#ifdef USE_ARB
+inline void DirichletCharacter::value(acb_t out, long n) {
+    parent->chi(out,m,n);
+}
+#endif
+
 
 inline bool DirichletCharacter::is_primitive() {
     // return whether or not this character is primitive

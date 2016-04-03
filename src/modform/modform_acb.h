@@ -1,24 +1,26 @@
-#ifndef __MODFORM_CC_H__
-#define __MODFORM_CC_H__
+#ifndef __MODFORM_ACB_H__
+#define __MODFORM_ACB_H__
+#define USE_ARB
 
 #include <vector>
 #include <complex>
 
 #include "slint.h"
+
 #include "characters.h"
 #include "modform_modp.h"
+#include "acb_mat.h"
 
-#include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
+//#include <Eigen/Dense>
+//#include <Eigen/Eigenvalues>
 
+//typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> cmatrix_t;
+//typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> rmatrix_t;
 
-typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> cmatrix_t;
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> rmatrix_t;
+class cuspforms_acb;
+cuspforms_acb * get_cuspforms_acb(DirichletCharacter &chi, int weight, int verbose = 0);
 
-class cuspforms_cc;
-cuspforms_cc * get_cuspforms_cc(DirichletCharacter &chi, int weight, int verbose = 0);
-
-class cuspforms_cc {
+class cuspforms_acb {
 public:
     int level;
     int weight;
@@ -28,37 +30,43 @@ public:
 
     std::vector<int> sublevels;
     std::vector<int> divisors_of_level;
-    std::vector<cuspforms_cc*> subspaces;
+    std::vector<cuspforms_acb*> subspaces;
     std::vector<DirichletGroup> sublevel_dirichlet_groups;
 
     int * divisor_counts;
     int * psi_table;
     int * phi_table;
     int ** gcd_tables;
-    std::complex<double> * chi_values;
-    std::complex<double> * chip_values;
 
-    std::vector<int> basis_rows;
+    acb_t * chi_values;
+    acb_t * chip_values;
 
-    std::vector<std::complex<double> > traces;
+    std::vector<int> basis_cols;
 
-    std::complex<double> trace(int n);
-    std::complex<double> trace_TnTm(int n, int m);
+    acb_t * traces;
+    int traces_size = 0;
+    int traces_computed = 0;
+
+    //std::vector<std::complex<double> > traces;
+
+    void trace(acb_t out, int n);
+    void trace_TnTm(acb_t out, int n, int m);
+    void trace_TpTnTm(acb_t out, int p, int n, int m);
     void compute_traces(int end);
 
     int dimension();
-    int new_dimension();
+    long new_dimension();
 
-    cmatrix_t newspace_basis(int ncoeffs);
+    void newspace_basis(acb_mat_t B, int ncoeffs);
     const std::vector<int>& newspace_basis_data();
-    cmatrix_t basis(int ncoeffs);
+    //cmatrix_t basis(int ncoeffs);
 
     cuspforms_modp * modp_space;
-    cmatrix_t newforms(int ncoeffs);
+    void newforms(acb_mat_t out, int ncoeffs);
 
-    double evalpoly(long t, long n);
+    void evalpoly(fmpz_t out, fmpz_t t, fmpz_t n);
 
-    cuspforms_cc(DirichletCharacter &_chi, const int w, int _verbose = 0) {
+    cuspforms_acb(DirichletCharacter &_chi, const int w, int _verbose = 0) {
         verbose = _verbose;
         chi = _chi.m;
         level = _chi.parent->q;
@@ -83,17 +91,19 @@ public:
 
         modp_space = get_cuspforms_modp(_chi, weight, 10000000l);
 
-        chi_values = new std::complex<double>[level + 1];
+        chi_values = new acb_t[level + 1];
         for(int k = 0; k <= level; k++) {
-            chi_values[k] = _chi.value(k);
+            acb_init(chi_values[k]);
+            _chi.value(chi_values[k], k);
         }
         divisor_counts = new int[level + 1];
 
         DirichletGroup G(conductor);
         DirichletCharacter chip = G.character(primitive_index);
-        chip_values = new std::complex<double>[conductor + 1];
+        chip_values = new acb_t[conductor + 1];
         for(int k = 0; k <= conductor; k++) {
-            chip_values[k] = chip.value(k);
+            acb_init(chip_values[k]);
+            chip.value(chip_values[k], k);
         }
 
         divisors_of_level = divisors(level);
@@ -103,13 +113,13 @@ public:
                 sublevels.push_back(M);
                 DirichletGroup G(M);
                 DirichletCharacter psi = G.character(G.index_from_primitive_character(conductor, primitive_index));
-                cuspforms_cc * S2 = get_cuspforms_cc(psi, weight, verbose);
+                cuspforms_acb * S2 = get_cuspforms_acb(psi, weight, verbose);
                 subspaces.push_back(S2);
             }
         }
     }
 
-    ~cuspforms_cc() {
+    ~cuspforms_acb() {
         delete [] psi_table;
         for(int k = 1; k < level + 1; k++) {
             if(level % k == 0) {
@@ -118,9 +128,22 @@ public:
         }
         delete [] gcd_tables;
         delete [] phi_table;
+        for(int k = 0; k <= level; k++) {
+            acb_clear(chi_values[k]);
+        }
         delete [] chi_values;
         delete [] divisor_counts;
+        for(int k = 0; k <= conductor; k++) {
+            acb_clear(chip_values[k]);
+        }
         delete [] chip_values;
+
+        if(traces_size > 0) {
+            for(int k = 0; k < traces_size; k++) {
+                acb_clear(traces[k]);
+            }
+            delete [] traces;
+        }
     }
 };
 

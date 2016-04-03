@@ -2,14 +2,16 @@ CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -Wall
-LDLIBS = -lfftw3
+CXXFLAGS = -O2 -std=c++11 -Wall -I/home/bober/include/flint
+LDLIBS = -lfftw3 -lflint -larb
 
 OBJECTS = character-info.o \
-	  chimaxsum.o
+	  chimaxsum.o \
+	  arb_test.o
 
 EXECUTABLES = character-info \
-	      chimaxsum
+	      chimaxsum \
+              arb_test
 
 all: $(EXECUTABLES)
 

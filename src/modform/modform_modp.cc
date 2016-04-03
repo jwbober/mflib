@@ -74,6 +74,7 @@ long cuspforms_modp::trace_TnTm(int n, int m) {
     // Return the trace mod p of TmTn acting on S_k(chi).
     //
 
+    if(m*n == 0) return 0;
     int g = GCD(m,n);
     long TnTm = 0;
 
@@ -170,6 +171,7 @@ long cuspforms_modp::evalpoly(long t, long n) {
 }
 
 cuspforms_modp * get_cuspforms_modp(DirichletCharacter &chi, int weight, long p, int verbose) {
+    if(verbose > 2) cout << "getting space cuspforms_modp(" << chi.parent->q << ", " << weight << ", " << chi.m << ")" << " with p == " << p << endl;
     auto result = cache.find( space_desc_t(chi.parent->q, chi.m, weight, p) );
     if(result != cache.end()) return result->second;
 
@@ -178,7 +180,86 @@ cuspforms_modp * get_cuspforms_modp(DirichletCharacter &chi, int weight, long p,
     return S;
 }
 
+void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
+    int dim = new_dimension();
+    vector<int> basis_data = newspace_basis_data();
+    int coefficients_needed_for_full_rank = basis_data[dim - 1] + 1;
+    ncoeffs = std::max(ncoeffs, coefficients_needed_for_full_rank);
+    nmod_mat_t basis;
+    newspace_basis(basis, ncoeffs);
+    nmod_mat_t smallbasis; // flint wants all the matrices to be square
+                           // for linear equation solving, so we're going
+                           // to pick out a piece of the basis that we know
+                           // gives full rank. At the same time, we'll transpose
+                           // it.
+    nmod_mat_t Tn;
+    nmod_mat_t transformed_basis;
+    nmod_mat_init(smallbasis, dim, dim, p);
+    nmod_mat_init(transformed_basis, dim, dim, p);
+    nmod_mat_init(Tn, dim, dim, p);
 
+
+    for(int k = 0; k < dim; k++) {
+        for(int j = 0; j < dim; j++) {
+            nmod_mat_entry(smallbasis, j, k) = nmod_mat_entry(basis, k, basis_data[j]);
+        }
+    }
+
+    int n = 2;
+    nmod_mat_t X, Y;
+    nmod_mat_init(X, dim, dim, p);
+    nmod_mat_init(Y, dim, dim, p);
+    while(n < 20) {
+        nmod_mat_zero(transformed_basis);
+        int max_coeff_needed = coefficients_needed_for_full_rank * n;
+        if(max_coeff_needed > ncoeffs) {
+            cerr << "need to compute more coefficients." << endl;
+            exit(0);
+        }
+        for(int j = 0; j < dim; j++) {
+            for(int k = 0; k < dim; k++) {
+                int m = basis_data[k];
+                for(auto d : divisors(GCD(m, n))) {
+                    d = d % p;
+                    long z = chi_values[d % level];
+                    z = nmod_mul(z, nmod_pow_ui(d, weight - 1, modp), modp);
+                    z = nmod_mul(z, nmod_mat_entry(basis, j, m*n/(d*d)), modp);
+                    nmod_mat_entry(transformed_basis, k, j) =
+                        nmod_add(nmod_mat_entry(transformed_basis, k, j), z, modp);
+                    //transformed_basis(j, m) += chi_values[d % level] * pow((double)d, weight - 1) * basis(j, m*n/(d*d));
+                }
+            }
+        }
+        int x = nmod_mat_solve(Tn, smallbasis, transformed_basis);
+        //cout << x << endl;
+        //nmod_mat_print_pretty(smallbasis);
+        //nmod_mat_print_pretty(transformed_basis);
+        cout << n << " ";
+        //nmod_mat_print_pretty(Tn);
+        for(int a = 0; a <= 2*n; a++) {
+            for(int k = 0; k < dim; k++) {
+                nmod_mat_entry(X, k, k) = a;
+            }
+            nmod_mat_sub(Y, Tn, X);
+            if(nmod_mat_det(Y) == 0) cout << a << " ";
+            if(a == 0) continue;
+            a = p - a;
+            for(int k = 0; k < dim; k++) {
+                nmod_mat_entry(X, k, k) = a;
+            }
+            nmod_mat_sub(Y, Tn, X);
+            if(nmod_mat_det(Y) == 0) cout << a - p << " ";
+            a = p - a;
+        }
+        n++;
+        cout << endl;
+    }
+
+    nmod_mat_clear(Tn);
+    nmod_mat_clear(basis);
+    nmod_mat_clear(smallbasis);
+    nmod_mat_clear(transformed_basis);
+}
 
 void cuspforms_modp::newspace_basis(nmod_mat_t basis, int ncoeffs) {
     newspace_basis_data();
@@ -208,10 +289,15 @@ const vector<int>& cuspforms_modp::newspace_basis_data() {
     int n = 1;
     int row = 0;
     while(row < d) {
-        //while(GCD(n, level) > 1) n++;
+        while(GCD(n, level) > 1) n++;
         basis_rows.push_back(n);
-        for(int m = 1; m < d + 1; m++) {
-            nmod_mat_entry(basis, row, m - 1) = trace_TnTm(n, m);
+        int m = 1;
+        int col = 0;
+        while(col < d) {
+            while(GCD(m, level) > 1) n++;
+            //for(int m = 1; m < d + 1; m++) {
+            nmod_mat_entry(basis, row, col) = trace_TnTm(n, m);
+            col++;
         }
         row++;
         n++;
@@ -227,7 +313,7 @@ const vector<int>& cuspforms_modp::newspace_basis_data() {
     basis_rows.clear();
 
     while(k < d) {
-        //while(GCD(n, level) != 1) n++;
+        while(GCD(n, level) != 1) n++;
         for(int j = 0; j < k; j++) {
             //while(GCD(m, level) != 1) m++;
             int m = basis_rows[j];
@@ -279,7 +365,8 @@ void cuspforms_modp::compute_traces(int end) {
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
         //traces[z*z] += A1 * chi_values[z % level] % p;    // depends on n at all.
         long a = z % p;
-        a = PowerMod(a, weight - 2, p);
+        a = nmod_pow_ui(a, weight - 2, modp);
+        //a = PowerMod(a, weight - 2, p);
         a = nmod_mul(a, A1, modp);
         NMOD_ADDMUL(traces[z*z], a, chi_values[z % level], modp); // traces[z*z] += A1 * chi(z) mod p
     }
@@ -289,7 +376,10 @@ void cuspforms_modp::compute_traces(int end) {
     //cout << "computing A2 for level " << level << endl;
 
     long print_interval = 0;
-    if(verbose > 0) { cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l); }
+    if(verbose > 0) { 
+        cerr << "level " << level << endl;
+        cerr << "start = " << start << " end = " << end << endl;
+        cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l); }
 
     int * square_divisors = new int[ (int)(4*end*.83 + 11) ];   // To avoid repeated factorizations in the following loop,
     int * square_divisors_indices = new int[4*end + 1];         // we create some arrays such that for each D == 0 or 3 mod 4,
@@ -312,7 +402,7 @@ void cuspforms_modp::compute_traces(int end) {
             cerr << '.';
             cerr.flush();
         }
-        for(int x = 0; x < level; x++) {
+        for(long x = 0; x < level; x++) {
             long chi = chi_values[x];
             if(chi == 0) continue;
             // These values of x and t will contribute to those n for
@@ -321,14 +411,14 @@ void cuspforms_modp::compute_traces(int end) {
             if((x*x - t*x + starting_n) % level != 0) {
                 starting_n += (level - (x*x - t*x + starting_n) % level);
             }
-            for(int n = starting_n; n < end; n += level) {
+            for(long n = starting_n; n < end; n += level) {
                 // Now for this (t,n,x) we will add a term to traces[n]
                 // for each f such that f*f divides (t^2 - 4n) AND
                 // gcd(f, N) * N divides x*x - t*x + n
                 //
                 // So we find the square divisors of t^2 - 4n that we've
                 // already found
-                int D = 4*n - t*t;
+                long D = 4*n - t*t;
                 int k = square_divisors_indices[D];
                 int f = square_divisors[k];
                 long polyterm = evalpoly(t, n);
@@ -408,7 +498,8 @@ void cuspforms_modp::compute_traces(int end) {
                 }
             }
             if(d*d == n) a = nmod_mul(a, one_over_two, modp);
-            long dpow = PowerMod(d, weight - 1, p);
+            //long dpow = PowerMod(d, weight - 1, p);
+            long dpow = nmod_pow_ui(d, weight - 1, modp);
             a = nmod_mul(a, dpow, modp);
             traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
@@ -460,7 +551,8 @@ void cuspforms_modp::compute_traces(int end) {
                     if(b == 1 && N == M) continue;
                     if(n % (b*b) == 0) {
                         int mu = mobius(b);
-                        long bpow = PowerMod(b, weight - 1, p);
+                        //long bpow = PowerMod(b, weight - 1, p);
+                        long bpow = nmod_pow_ui(b, weight - 1, modp);
                         if(mu == 1) {
                             long z = nmod_mul(divisor_counts[x], chip_values[b % q], modp);
                             z = nmod_mul(z, bpow, modp);

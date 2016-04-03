@@ -2,7 +2,7 @@ CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall
+CXXFLAGS = -DUSE_ARB -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall
 LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb
 
 OBJECTS = trace-formula.o \

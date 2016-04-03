@@ -1,3 +1,6 @@
+#ifndef __MODFORM_MODP_H__
+#define __MODFORM_MODP_H__
+
 #include <vector>
 
 #include "flint/flint.h"
@@ -6,13 +9,13 @@
 #include "slint.h"
 #include "characters.h"
 
-static int psi(int N) {
+static long psi(int N) {
     int_factorization_t f;
     factor(N, f);
 
-    int PSI = 1;
+    long PSI = 1;
     for(int k = 0; k < f.nfactors; k++) {
-        PSI *= f.factors[k].f/f.factors[k].p * (f.factors[k].p + 1);
+        PSI *= f.factors[k].f/f.factors[k].p * (long)(f.factors[k].p + 1);
     }
     return PSI;
 }
@@ -36,7 +39,7 @@ public:
     std::vector<DirichletGroup> sublevel_dirichlet_groups;
 
     int * divisor_counts;
-    int * psi_table;
+    long * psi_table;
     int * phi_table;
     int ** gcd_tables;
     long * chi_values;
@@ -54,6 +57,8 @@ public:
     int new_dimension();
 
     void newspace_basis(nmod_mat_t basis, int ncoeffs);
+    void newforms(nmod_mat_t forms, int ncoeffs);
+
     const std::vector<int>& newspace_basis_data();
     void basis(nmod_mat_t * basis, int ncoeffs);
 
@@ -87,7 +92,7 @@ public:
 
         nmod_init(&modp, p);
 
-        psi_table = new int[level + 1];
+        psi_table = new long[level + 1];
         phi_table = new int[level + 1];
         gcd_tables = new int*[level + 1];
 
@@ -139,3 +144,4 @@ public:
     }
 };
 
+#endif

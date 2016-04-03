@@ -23,6 +23,7 @@ typedef tuple<int,int,int> space_desc_t;
 static map<space_desc_t, cuspforms_cc*> cache;
 
 cuspforms_cc * get_cuspforms_cc(DirichletCharacter &chi, int weight, int verbose) {
+    if(verbose > 2) cout << "getting space cuspforms_cc(" << chi.parent->q << ", " << weight << ", " << chi.m << ")" << endl;
     auto result = cache.find( space_desc_t(chi.parent->q, chi.m, weight) );
     if(result != cache.end()) return result->second;
 
@@ -97,6 +98,42 @@ static void square_divisors_mod03(int D, int * divisors, int& k) {
     } while(f != 0);
 }
 
+double cuspforms_cc::evalpoly(long tt, long nn) {
+    // translated from Ralph's code
+    double t = tt;
+    double n = nn;
+    int k = weight - 2;
+    switch(k) {
+        case 0: return 1;
+        case 1: return t;
+        case 2: { // t^2 - n
+            return t*t - n;
+            }
+        case 3: { // t^3 - 2tn
+            return t*t*t - 2*t*n;
+            }
+        case 4: { // t^4 - 3nt^2 + n^2
+            return t*t*(t*t - 3*n) + n*n;
+        }
+    case 5: {
+            // =t^5 - 4*t^3*n + 3*t*n^2;
+            return t*t*t*t*t - 4*t*t*t*n + 3*t*n*n;
+        }
+    //case 10:
+    //    i64 tt = t*t;
+    //    return - n*n*n*n*n + tt * (15*n*n*n*n + tt * (-35*n*n*n + tt * (28*n*n + tt * (-9*n + tt))));
+    }
+
+    double val[2];
+    val[0] = t*t*t*t - 3*t*t*n + n*n;
+    val[1] = t*t*t*t*t - 4*t*t*t*n + 3*t*n*n;
+
+    for(int i = 6; i<= k; i++) {
+        val[i % 2] = t*val[(i + 1) % 2] - n *val[i % 2];
+    }
+    return val[k % 2];
+}
+
 complex<double> cuspforms_cc::trace(int n) {
     if(n > 1 && new_dimension() == 0) return 0;
     if(n < traces.size()) return traces[n];
@@ -149,6 +186,7 @@ cmatrix_t cuspforms_cc::newspace_basis(int ncoeffs) {
 
 cmatrix_t cuspforms_cc::newforms(int ncoeffs) {
     int dim = new_dimension();
+    if(dim == 0) {return cmatrix_t(0,0);}
     int coefficients_needed_for_full_rank = newspace_basis_data()[dim - 1] + 1;
     ncoeffs = std::max(ncoeffs, coefficients_needed_for_full_rank);
     cmatrix_t basis = newspace_basis(ncoeffs);
@@ -169,7 +207,7 @@ cmatrix_t cuspforms_cc::newforms(int ncoeffs) {
         for(int j = 0; j < dim; j++) {
             for(int m = 1; m < coefficients_needed_for_full_rank; m++) {
                 for(auto d : divisors(GCD(m, n))) {
-                    transformed_basis(j, m) += chi_values[d % level] * (double)d * basis(j, m*n/(d*d));
+                    transformed_basis(j, m) += chi_values[d % level] * pow((double)d, weight - 1) * basis(j, m*n/(d*d));
                 }
             }
         }
@@ -221,12 +259,13 @@ void cuspforms_cc::compute_traces(int end) {
     int start = traces.size();
     traces.resize(end, 0.0);
 
-    complex<double> A1 = psi_table[level]/12.0;
+    complex<double> A1 = psi_table[level]/12.0 * (weight - 1.0);
     int z = (int)sqrt(start);                               //
     while(z*z < start) z++;                                 // A1 is only nonzero when n is a square,
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
                                                             // depends on n at all.
-        traces[z*z] += A1 * chi_values[z % level];
+        double npow = pow(z, weight - 2);
+        traces[z*z] += npow * A1 * chi_values[z % level];
     }
 
     long print_interval = 0;
@@ -253,7 +292,7 @@ void cuspforms_cc::compute_traces(int end) {
             cerr << '.';
             cerr.flush();
         }
-        for(int x = 0; x < level; x++) {
+        for(long x = 0; x < level; x++) {
             complex<double> chi_value = chi_values[x];
             if(chi_value == 0.0) continue;
             // These values of x and t will contribute to those n for
@@ -272,6 +311,7 @@ void cuspforms_cc::compute_traces(int end) {
                 int D = 4*n - t*t;
                 int k = square_divisors_indices[D];
                 int f = square_divisors[k];
+                double polyterm = evalpoly(t, n);
                 do {
                     int g;
                     if(f == 1) {
@@ -290,6 +330,7 @@ void cuspforms_cc::compute_traces(int end) {
                         if(D/(f*f) == 3) z /= 3.0; // z = nmod_mul(z, one_over_three, modp); // (z * one_over_three) % p;
                         if(D/(f*f) == 4) z /= 2.0; // z = nmod_mul(z, one_over_two, modp);   //(z * one_over_two) % p;
                         z /= 2.0;
+                        z *= polyterm;
                         traces[n] -= z;
                         //z = nmod_mul(z, one_over_two, modp);
                         //traces[n] = nmod_sub(traces[n], z, modp);
@@ -348,7 +389,8 @@ void cuspforms_cc::compute_traces(int end) {
                 }
             }
             if(d*d == n) a /= 2.0; //a = nmod_mul(a, one_over_two, modp);
-            a *= (double)d; //a = nmod_mul(a, d, modp);
+            //a *= (double)d; //a = nmod_mul(a, d, modp);
+            a *= pow(d, weight - 1);
             traces[n] -= a;
             //traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
@@ -358,7 +400,7 @@ void cuspforms_cc::compute_traces(int end) {
 
     //cout << "computing A4 for level " << level << endl;
     // computation of A4
-    if(chi == 1) {
+    if(chi == 1 && weight == 2) {
         for(int t = 1; t < end; t++) {
             int starting_n = start;
             if(starting_n % t != 0) {
@@ -396,7 +438,7 @@ void cuspforms_cc::compute_traces(int end) {
                     if(b == 1 && N == M) continue;
                     if(n % (b*b) == 0) {
                         int mu = mobius(b);
-                        traces[n] -= mu * (double)divisor_counts[x] * chip_values[b % q] * (double)b * subspace->traces[n/(b*b)];
+                        traces[n] -= mu * (double)divisor_counts[x] * chip_values[b % q] * pow((double)b, weight - 1) * subspace->traces[n/(b*b)];
                     }
                 }
             }

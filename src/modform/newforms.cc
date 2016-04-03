@@ -7,17 +7,18 @@
 
 using namespace std;
 
-complex<double> Lsign(const Eigen::Matrix<complex<double>, 1, Eigen::Dynamic> &coeffs, int level, int verbose) {
+complex<double> Lsign(const Eigen::Matrix<complex<double>, 1, Eigen::Dynamic> &coeffs, int level, int weight, int verbose) {
     complex<double> S1 = 0.0, S2 = 0.0, S3 = 0.0, S4 = 0.0;
     complex<double> A = 1.0;
     complex<double> B = 1.1;
     for(int k = 1; k < coeffs.size(); k++) {
         complex<double> an = coeffs[k];
         double n = k;
-        S1 += an/n * exp(-2 * M_PI * n * A/sqrt(level));
-        S2 += conj(an)/n * exp(-2 * M_PI * n/(A*sqrt(level)));
-        S3 += an/n * exp(-2 * M_PI * n * B/sqrt(level));
-        S4 += conj(an)/n * exp(-2 * M_PI * n /(B*sqrt(level)));
+        double npow = pow(n, weight - 1);
+        S1 += an/npow * exp(-2 * M_PI * n * A/sqrt(level));
+        S2 += conj(an)/npow * exp(-2 * M_PI * n/(A*sqrt(level)));
+        S3 += an/npow * exp(-2 * M_PI * n * B/sqrt(level));
+        S4 += conj(an)/npow * exp(-2 * M_PI * n /(B*sqrt(level)));
     }
     complex<double> sign = (S1 - S3)/(S4 - S2);
     if(verbose)
@@ -51,13 +52,18 @@ int main(int argc, char ** argv) {
     cmatrix_t newforms = S->newforms(ncoeffs);
 
     if(verbose > 1) {
+        cout << "basis" << endl;
         cout << S->newspace_basis(ncoeffs) << endl;
         cout << endl;
+        cout << "newforms:" << endl;
         cout << newforms << endl << endl;
     }
     int dim = newforms.rows();
     for(int k = 0; k < dim; k++) {
-        string filename = "mf/" + to_string(level) + "." + to_string(chi_number) + "." + to_string(k) + ".lcalc";
+        string filename = "mf/" + to_string(level) + "."
+                                + to_string(weight) + "."
+                                + to_string(chi_number) + "."\
+                                + to_string(k) + ".lcalc";
         ofstream lcalc_file(filename);
         lcalc_file << setprecision(17);
         lcalc_file  << 3 << endl
@@ -66,9 +72,9 @@ int main(int argc, char ** argv) {
                     << 0 << endl
                     << 1 << endl
                     << 1 << endl
-                    << .5 << " " << 0 << endl
+                    << (weight - 1.0)/2.0 << " " << 0 << endl
                     << sqrt(level)/(2*M_PI) << endl;
-        complex<double> sign = Lsign(newforms.row(k), level, verbose);
+        complex<double> sign = Lsign(newforms.row(k), level, weight, verbose);
         //if(chi_number == 1) {
         //    sign = -newforms(k, level - 1);
         //}
