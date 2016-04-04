@@ -137,6 +137,8 @@ int main(int argc, char ** argv) {
 
     for(int k = 0; k < dim; k++) {
         string outfilename = "mf/" + to_string(level)
+                                   + "/" + to_string(weight) + "/"
+                                   + to_string(level)
                                    + "." + to_string(weight)
                                    + "." + to_string(chi_number)
                                    + "." + to_string(k);

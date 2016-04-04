@@ -37,3 +37,7 @@ modp_newbasis
 modp_trace
 newforms
 check2
+mf
+output
+mfold
+output-old

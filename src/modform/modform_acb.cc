@@ -337,7 +337,7 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     compute_traces(ncoeffs * basis_data[dim-1]);
     if(verbose) cout << "finished initial computation of traces" << endl;
 
-    int sqrt_lim = std::max(20, basis_data[dim - 1] + 1);
+    int sqrt_lim = std::max(100, basis_data[dim - 1] + 1);
     acb_ptr invsqrts = _acb_vec_init(sqrt_lim);
     acb_set_ui(&invsqrts[1], 1u);
     for(int p = 2; p < sqrt_lim; p = next_prime(p)) {
@@ -402,7 +402,7 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     while(!found_unique_eigenvalues) {
         while(GCD(p, level) > 1) {p++;}
         if(verbose) cout << "computing hecke action for p = " << p << endl;
-        compute_traces(p * basis_data[dim-1]*basis_data[dim-1] + 5);
+        compute_traces((p+1) * (basis_data[dim-1] + 1)*(basis_data[dim-1] + 1) + 5);
 
         for(int k = 0; k < dim; k++) {
             for(int j = k; j < dim; j++) {

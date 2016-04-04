@@ -18,7 +18,7 @@
 
 #ifdef USE_ARB
 #include "acb.h"
-const long prec = 200;
+const long prec = 400;
 #endif
 
 inline std::complex<double> e(double z) {
