@@ -69,6 +69,45 @@ int test_jacobi(flint_rand_t state, int dim, int prec) {
     return 1;
 }
 
+int test_jacobi2() {
+#define A(i,j) arb_mat_entry(A, i, j)
+    arb_mat_t A;
+    arb_mat_init(A, 5, 5);
+    arb_set_si(A(0,0), 1);
+    arb_set_si(A(0,1), -1);
+
+    arb_set_si(A(1,0), -1);
+    arb_set_si(A(1,1),  2);
+    arb_set_si(A(1,2), -1);
+
+    arb_set_si(A(2,1), -1);
+    arb_set_si(A(2,2),  2);
+    arb_set_si(A(2,3), -1);
+
+    arb_set_si(A(3,2), -1);
+    arb_set_si(A(3,3),  2);
+    arb_set_si(A(3,4), -1);
+
+    arb_set_si(A(4,3), -1);
+    arb_set_si(A(4,4),  1);
+#undef A
+
+    arb_mat_scalar_mul_2exp_si(A, A, -8);
+
+    arb_mat_t P;
+    arb_mat_t D;
+
+    arb_mat_init(P, 5, 5);
+    arb_mat_init(D, 5, 1);
+
+    arb_mat_jacobi(D, P, A, 4);
+    arb_mat_printd(A, 15);
+    printf("\n");
+    arb_mat_printd(P, 15);
+    printf("\n");
+    arb_mat_printd(D, 15);
+}
+
 int main(int argc, char ** argv) {
     int dim = atoi(argv[1]);
     int prec = atoi(argv[2]);
@@ -80,6 +119,7 @@ int main(int argc, char ** argv) {
     flint_randinit(state);
     flint_randseed(state, seed, seed);
 
-    test_jacobi(state, dim, prec);
+    //test_jacobi(state, dim, prec);
+    test_jacobi2();
     return 0;
 }
