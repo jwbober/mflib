@@ -10,6 +10,10 @@
 #include "acb_poly.h"
 
 #include "flint/fmpz_poly.h"
+#include "flint/NTL-interface.h"
+
+#include "NTL/ZZX.h"
+#include "NTL/ZZXFactoring.h"
 
 using namespace std;
 
@@ -73,6 +77,10 @@ int main(int argc, char ** argv) {
 
     fmpz_poly_t charpolyz;
     fmpz_poly_init(charpolyz);
+
+    fmpz_poly_t hh;
+    fmpz_poly_init(hh);
+
     for(auto orbit : G.galois_orbits()) {
         for(int k = 0; k < max_dimension; k++) {
             acb_zero(roots[k]);
@@ -141,13 +149,15 @@ int main(int argc, char ** argv) {
             }
             else {
                 if(fmpz_poly_is_squarefree(charpolyz)) {
-                    fmpz_poly_factor_t factors;
-                    fmpz_poly_factor_init(factors);
-                    fmpz_poly_factor_zassenhaus(factors, charpolyz);
-                    if(factors->num == 1) {
+                    NTL::ZZ content;
+                    NTL::ZZX ff;
+                    NTL::vec_pair_ZZX_long factors;
+                    fmpz_poly_get_ZZX(ff, charpolyz);
+                    NTL::factor(content, factors, ff);
+                    if(factors.length() == 1) {
                         for(auto m : orbit) {
                             cout << level << "." << weight << "." << m << " ";
-                            fmpz_poly_print_pretty(factors->p, "x");
+                            fmpz_poly_print_pretty(charpolyz, "x");
                             cout << endl;
                         }
                     }
@@ -158,17 +168,18 @@ int main(int argc, char ** argv) {
                         for(int l = 0; l < nroots; l++) {
                             acb_neg(roots[l], roots[l]);
                         }
-                        acb_poly_t f;
-                        acb_poly_init(f);
+                        acb_poly_t g;
+                        acb_poly_init(g);
                         int root_to_polynomial[nroots];
                         for(int l = 0; l < nroots; l++) {
                             root_to_polynomial[l] = -1;
                         }
-                        for(int l = 0; l < factors->num; l++) {
-                            acb_poly_set_fmpz_poly(f, factors->p + l, 2000);
+                        for(int l = 0; l < factors.length(); l++) {
+                            fmpz_poly_set_ZZX(hh, factors[l].a);
+                            acb_poly_set_fmpz_poly(g, hh, 2000);
                             int nroots_found = 0;
                             for(int k = 0; k < nroots; k++) {
-                                acb_poly_evaluate(z, f, roots[k], 2000);
+                                acb_poly_evaluate(z, g, roots[k], 2000);
                                 if(acb_contains_zero(z)) {
                                     nroots_found++;
                                     if(root_to_polynomial[k] != -1) {
@@ -179,7 +190,7 @@ int main(int argc, char ** argv) {
                                             cout << level << "." << weight << "." << m << " ??" << endl;
                                         }
                                         k = nroots;
-                                        l = factors->num;
+                                        l = factors.length();
                                         finished = true;
                                     }
                                     else {
@@ -187,11 +198,11 @@ int main(int argc, char ** argv) {
                                     }
                                 }
                             }
-                            if(nroots_found != acb_poly_degree(f)) {
+                            if(nroots_found != acb_poly_degree(g)) {
                                 for(auto m : orbit) {
                                     cout << level << "." << weight << "." << m << " ???" << endl;
                                 }
-                                l = factors->num;
+                                l = factors.length();
                                 finished = true;
                             }
                         }
@@ -200,7 +211,8 @@ int main(int argc, char ** argv) {
                         for(auto m : orbit) {
                             for(int l = 0; l < single_orbit_dimension; l++) {
                                 cout << level << "." << weight << "." << m << "." << l << " ";
-                                fmpz_poly_print_pretty(factors->p + root_to_polynomial[k], "x");
+                                fmpz_poly_set_ZZX(hh, factors[root_to_polynomial[k]].a);
+                                fmpz_poly_print_pretty(hh, "x");
                                 cout << endl;
                                 k++;
                             }
@@ -212,7 +224,7 @@ int main(int argc, char ** argv) {
                         //    if(k < factors[0].num - 1) cout << " ";
                         //}
                         //cout << endl;
-                        acb_poly_clear(f);
+                        acb_poly_clear(g);
                     }
                     finished = true;
                 }
