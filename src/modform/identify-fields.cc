@@ -81,7 +81,8 @@ int main(int argc, char ** argv) {
     fmpz_poly_t hh;
     fmpz_poly_init(hh);
 
-    for(auto orbit : G.galois_orbits()) {
+    for(auto _orbit : G.galois_orbits()) {
+        vector<long> orbit(_orbit.begin(), _orbit.end());
         for(int k = 0; k < max_dimension; k++) {
             acb_zero(roots[k]);
         }
@@ -154,12 +155,20 @@ int main(int argc, char ** argv) {
                     NTL::vec_pair_ZZX_long factors;
                     fmpz_poly_get_ZZX(ff, charpolyz);
                     NTL::factor(content, factors, ff);
+                    int single_orbit_dimension = nroots/orbit.size();
                     if(factors.length() == 1) {
-                        for(auto m : orbit) {
-                            cout << level << "." << weight << "." << m << " ";
-                            fmpz_poly_print_pretty(charpolyz, "x");
-                            cout << endl;
+                        for(int j = 0; j < orbit.size(); j++) {
+                            for(int l = 0; l < single_orbit_dimension; l++) {
+                                cout << level << "." << weight << "." << orbit[j] << "." << l << " ";
+                            }
                         }
+                        fmpz_poly_print_pretty(charpolyz, "x");
+                        cout  << endl;
+                        //for(auto m : orbit) {
+                        //    cout << level << "." << weight << "." << m << " ";
+                        //    fmpz_poly_print_pretty(charpolyz, "x");
+                        //    cout << endl;
+                        //}
                     }
                     else {
                         // now we need to match up the eigenvalues with the polynomials.
@@ -208,15 +217,27 @@ int main(int argc, char ** argv) {
                         }
                         int single_orbit_dimension = nroots/orbit.size();
                         int k = 0;
-                        for(auto m : orbit) {
-                            for(int l = 0; l < single_orbit_dimension; l++) {
-                                cout << level << "." << weight << "." << m << "." << l << " ";
-                                fmpz_poly_set_ZZX(hh, factors[root_to_polynomial[k]].a);
-                                fmpz_poly_print_pretty(hh, "x");
-                                cout << endl;
-                                k++;
+                        for(int k = 0; k < factors.length(); k++) {
+                            for(int j = 0; j < orbit.size(); j++) {
+                                for(int l = 0; l < single_orbit_dimension; l++) {
+                                    if(root_to_polynomial[j * orbit.size() + l] == k) {
+                                        cout << level << "." << weight << "." << orbit[j] << "." << l << " ";
+                                    }
+                                }
                             }
+                            fmpz_poly_set_ZZX(hh, factors[k].a);
+                            fmpz_poly_print_pretty(hh, "x");
+                            cout << endl;
                         }
+                        //for(auto m : orbit) {
+                        //    for(int l = 0; l < single_orbit_dimension; l++) {
+                        //        cout << level << "." << weight << "." << m << "." << l << " ";
+                        //        fmpz_poly_set_ZZX(hh, factors[root_to_polynomial[k]].a);
+                        //        fmpz_poly_print_pretty(hh, "x");
+                        //        cout << endl;
+                        //        k++;
+                        //    }
+                        //}
 
                         //cout << level << "." << weight << "." << *(orbit.begin()) << " ";
                         //for(int k = 0; k < factors[0].num; k++) {
