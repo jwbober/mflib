@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <complex>
 
 #include "acb.h"
 
@@ -71,22 +72,30 @@ int main(int argc, char ** argv) {
     int level = atoi(argv[1]);
     int weight = atoi(argv[2]);
     int chi_number = atoi(argv[3]);
+    int form_number = atoi(argv[4]);
 
     string filename = "mf/" + to_string(level) + "/" + to_string(weight) + "/" +
                       to_string(level) + "." +
                       to_string(weight) + "." +
-                      to_string(chi_number) + ".0";
+                      to_string(chi_number) + "." +   to_string(form_number);
 
     acb_t z;
     acb_init(z);
     acb_ptr coeffs = _acb_vec_init(lines_expected);
     int lines = parse_textfile(coeffs, filename, lines_expected);
     for(int k = 0; k < lines; k++) {
-        //acb_printd(coeffs + k, 10);
+        double x = arf_get_d(arb_midref(acb_realref(coeffs + k)), ARF_RND_NEAR);
+        double y = arf_get_d(arb_midref(acb_imagref(coeffs + k)), ARF_RND_NEAR);
+        if(abs(x) < 1e-20) x = 0;
+        if(abs(y) < 1e-20) y = 0;
+        complex<double> z(x,y);
+        cout << k + 1 << " " << z << "\t\t";
+        acb_printd(coeffs + k, 10);
+        cout  << endl;
         //cout << endl;
-        acb_add(z, z, coeffs + k, 1000);
+        //acb_add(z, z, coeffs + k, 1000);
     }
-    acb_printd(z, 10);
+    //acb_printd(z, 10);
     _acb_vec_clear(coeffs, lines_expected);
     return 0;
 }

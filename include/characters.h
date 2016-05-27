@@ -689,6 +689,7 @@ public:
         for(long n = 1; n < q; n++) {
             if(GCD(n, q) == 1) not_in_orbit_yet.insert(n);
         }
+        if(q == 1) not_in_orbit_yet.insert(1);
         while(not_in_orbit_yet.size() > 0) {
             long next = *(not_in_orbit_yet.begin());
             auto o = character(next).galois_orbit();
@@ -1162,6 +1163,7 @@ inline void DirichletCharacter::values_mod_p(long & p, long * chi_values) {
 
 inline std::set<long> DirichletCharacter::galois_orbit() {
     std::set<long> orbit;
+    orbit.insert(m);
     long z = 1;
     for(int l = 0; l < parent->k; l++) {
         long p = parent->primes->at(l);

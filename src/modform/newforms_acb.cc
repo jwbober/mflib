@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <string>
+#include <cstdlib>
 
 using namespace std;
 
@@ -85,9 +87,10 @@ int main(int argc, char ** argv) {
     weight = atoi(argv[2]);
     chi_number = atoi(argv[3]);
     ncoeffs = atoi(argv[4]);
+    string outpath(argv[5]);
 
     int verbose = 0;
-    if(argc > 5) verbose = atoi(argv[5]);
+    if(argc > 6) verbose = atoi(argv[6]);
 
     DirichletGroup G(level);
     if(GCD(level, chi_number) != 1) return 0;
@@ -135,13 +138,17 @@ int main(int argc, char ** argv) {
     //cout << newforms1.transpose() << endl;
     //cout << endl;
 
+    string fulloutpath = outpath + "/" + to_string(level)
+                               + "/" + to_string(weight);
+    string command = "mkdir -p " + fulloutpath;
+    system(command.c_str());
     for(int k = 0; k < dim; k++) {
-        string outfilename = "mf/" + to_string(level)
-                                   + "/" + to_string(weight) + "/"
+        string outfilename = fulloutpath + "/" 
                                    + to_string(level)
                                    + "." + to_string(weight)
                                    + "." + to_string(chi_number)
                                    + "." + to_string(k);
+        
         cout << "writing data to " << outfilename << endl;
         FILE * outfile = fopen(outfilename.c_str(), "w");
         for(int j = 1; j < ncoeffs; j++) {

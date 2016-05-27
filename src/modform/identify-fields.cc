@@ -17,7 +17,7 @@
 
 using namespace std;
 
-const int max_dimension = 2000;
+const int max_dimension = 25000;
 acb_t roots[max_dimension];
 
 void build_polynomial(acb_poly_t out, int start, int end) {
@@ -32,7 +32,7 @@ void build_polynomial(acb_poly_t out, int start, int end) {
     int mid = (start + end)/2;
     build_polynomial(out, start, mid);
     build_polynomial(a, mid + 1, end);
-    acb_poly_mul(out, out, a, 2000);
+    acb_poly_mul(out, out, a, 3*prec);
     //for(int k = start; k < end; k++) {
     //    acb_poly_set_coeff_acb(a, 0, roots[k]);
     //    acb_poly_mul(out, out, a, 4000);
@@ -51,11 +51,12 @@ void acb_set_zzzzzzzz(acb_t out, fmpz_t a, fmpz_t b, fmpz_t c, fmpz_t d,
 int main(int argc, char ** argv) {
     int level = atoi(argv[1]);
     int weight = atoi(argv[2]);
+    string data_basepath(argv[3]);
 
     for(int k = 0; k < max_dimension; k++) {
         acb_init(roots[k]);
     }
-    string datapath = "mf/" + to_string(level) + "/" + to_string(weight) + "/";
+    string datapath = data_basepath + "/" + to_string(level) + "/" + to_string(weight) + "/";
     acb_t a2;
     acb_init(a2);
     fmpz_t a, b, c, d, e, f, g, h;
@@ -89,6 +90,7 @@ int main(int argc, char ** argv) {
         int skip = 1;
         bool finished = false;
         while(!finished) {
+            vector<string> labels;
             int k = 0;
             for(auto m : orbit) {
                 string datafile_base =  to_string(level)
@@ -102,6 +104,7 @@ int main(int argc, char ** argv) {
                 }
 
                 while(infile) {
+                    labels.push_back(to_string(level) + "." + to_string(weight) + "." + to_string(m) + "." + to_string(n));
                     string line;
                     for(int l = 0; l < skip; l++) getline(infile, line);
 
@@ -124,7 +127,7 @@ int main(int argc, char ** argv) {
                     fmpz_set_str(h, x.c_str(), 10);
 
                     acb_set_zzzzzzzz(z, a, b, c, d, e, f, g, h);
-                    acb_sub(roots[k], roots[k], z, 2000);
+                    acb_sub(roots[k], roots[k], z, 3*prec);
                     infile.close();
                     n++;
                     k++;
@@ -143,8 +146,28 @@ int main(int argc, char ** argv) {
             build_polynomial(charpoly, 0, nroots - 1);
             int result = acb_poly_get_unique_fmpz_poly(charpolyz, charpoly);
             if(!result) {
+                acb_t coeff;
+                acb_init(coeff);
+                arf_t radius;
+                arf_init(radius);
+                slong max_r_error = -ARF_PREC_EXACT;
+                slong max_i_error = -ARF_PREC_EXACT;
+                for(int k = 0; k < nroots; k++) {
+                    acb_poly_get_coeff_acb(coeff, charpoly, k);
+                    arf_set_mag(radius, arb_radref(acb_realref(coeff)));
+                    slong error_bound = arf_abs_bound_lt_2exp_si(radius);
+                    if(error_bound > max_r_error)
+                        max_r_error = error_bound;
+                    //cout << error_bound << " ";
+                    arf_set_mag(radius, arb_radref(acb_imagref(coeff)));
+                    error_bound = arf_abs_bound_lt_2exp_si(radius);
+                    if(error_bound > max_i_error)
+                        max_i_error = error_bound;
+                    //cout << error_bound << endl;
+                }
+
                 for(auto m : orbit) {
-                    cout << level << "." << weight << "." << m << " ?" << endl;
+                    cout << level << "." << weight << "." << m << " ? " << max_r_error << " " << max_i_error << endl;
                 }
                 finished = true;
             }
@@ -162,6 +185,7 @@ int main(int argc, char ** argv) {
                                 cout << level << "." << weight << "." << orbit[j] << "." << l << " ";
                             }
                         }
+                        cout << skip + 1 << " ";
                         fmpz_poly_print_pretty(charpolyz, "x");
                         cout  << endl;
                         //for(auto m : orbit) {
@@ -218,13 +242,17 @@ int main(int argc, char ** argv) {
                         int single_orbit_dimension = nroots/orbit.size();
                         int k = 0;
                         for(int k = 0; k < factors.length(); k++) {
-                            for(int j = 0; j < orbit.size(); j++) {
-                                for(int l = 0; l < single_orbit_dimension; l++) {
-                                    if(root_to_polynomial[j * orbit.size() + l] == k) {
-                                        cout << level << "." << weight << "." << orbit[j] << "." << l << " ";
-                                    }
-                                }
+                            for(int l = 0; l < nroots; l++) {
+                                if(root_to_polynomial[l] == k) cout << labels[l] << " ";
                             }
+                            //for(int j = 0; j < orbit.size(); j++) {
+                            //    for(int l = 0; l < single_orbit_dimension; l++) {
+                            //       if(root_to_polynomial[j * orbit.size() + l] == k) {
+                            //            cout << level << "." << weight << "." << orbit[j] << "." << l << " ";
+                            //        }
+                            //    }
+                            //}
+                            cout << skip + 1 << " ";
                             fmpz_poly_set_ZZX(hh, factors[k].a);
                             fmpz_poly_print_pretty(hh, "x");
                             cout << endl;

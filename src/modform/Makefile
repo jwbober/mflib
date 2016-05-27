@@ -4,7 +4,12 @@ ROOT = ../..
 INCLUDE = $(ROOT)/include
 CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -DUSE_ARB -Wno-unused-function
 CFLAGS = -O2 -g -I/home/bober/include/flint -Wall
-LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl
+ifdef STATIC_LIB_DIR
+    LDLIBS = -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a
+else
+    LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl -lpthread
+endif
+
 
 OBJECTS = modform_cc.o \
 	  modform_modp.o \
