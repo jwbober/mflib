@@ -18,7 +18,6 @@
 
 #ifdef USE_ARB
 #include "acb.h"
-const long prec = 400;
 #endif
 
 inline std::complex<double> e(double z) {
@@ -97,6 +96,8 @@ public:
 
     long index_from_primitive_character(long q0, long m);
 
+    int prec; // working precision when using ARB
+
 #ifdef USE_MPFI
     mpfi_c_t * zeta_powers_odd_mpfi;
     mpfi_c_t * zeta_powers_even_mpfi;
@@ -128,7 +129,7 @@ public:
     DirichletGroup() {
         q = 0;
     }
-    DirichletGroup(long q_) : q(q_) {
+    DirichletGroup(long q_, int prec_ = 0) : q(q_), prec(prec_) {
         if(q == 0) return;
         q_even = 1;
         q_odd = q;
@@ -158,11 +159,14 @@ public:
             zeta_powers_odd = new std::complex<double>[phi_q_odd];
 
 #ifdef USE_MPFI
-            zeta_powers_odd_mpfi = new mpfi_c_t[phi_q_odd];
+                zeta_powers_odd_mpfi = new mpfi_c_t[phi_q_odd];
 #endif
 #ifdef USE_ARB
-            zeta_powers_odd_acb = new acb_t[phi_q_odd];
+            if(prec > 0) {
+                zeta_powers_odd_acb = new acb_t[phi_q_odd];
+            }
 #endif
+
 
             for(long j = 0; j < k; j++) {
                 long x = pow(primes->at(j), exponents->at(j));
@@ -198,11 +202,13 @@ public:
 #endif
 
 #ifdef USE_ARB
-            acb_init(twopii_on_qodd);
-            acb_zero(twopii_on_qodd);
-            arb_const_pi(acb_imagref(twopii_on_qodd), prec);
-            acb_mul_ui(twopii_on_qodd, twopii_on_qodd, 2ul, prec);
-            acb_div_ui(twopii_on_qodd, twopii_on_qodd, phi_q_odd, prec);
+            if(prec > 0) {
+                acb_init(twopii_on_qodd);
+                acb_zero(twopii_on_qodd);
+                arb_const_pi(acb_imagref(twopii_on_qodd), prec);
+                acb_mul_ui(twopii_on_qodd, twopii_on_qodd, 2ul, prec);
+                acb_div_ui(twopii_on_qodd, twopii_on_qodd, phi_q_odd, prec);
+            }
 #endif
 
             for(unsigned long n = 0; n < phi_q_odd; n++) {
@@ -215,9 +221,11 @@ public:
 #endif
 
 #ifdef USE_ARB
-            acb_init(zeta_powers_odd_acb[n]);
-            acb_mul_ui(zeta_powers_odd_acb[n], twopii_on_qodd, n, prec);
-            acb_exp(zeta_powers_odd_acb[n], zeta_powers_odd_acb[n], prec);
+            if(prec > 0) {
+                acb_init(zeta_powers_odd_acb[n]);
+                acb_mul_ui(zeta_powers_odd_acb[n], twopii_on_qodd, n, prec);
+                acb_exp(zeta_powers_odd_acb[n], zeta_powers_odd_acb[n], prec);
+            }
 #endif
 
 
@@ -243,13 +251,15 @@ public:
 #endif
 
 #ifdef USE_ARB
-            zeta_powers_even_acb = new acb_t[q_even/4];
+            if(prec > 0) {
+                zeta_powers_even_acb = new acb_t[q_even/4];
 
-            acb_init(twopii_on_qeven);
-            acb_zero(twopii_on_qeven);
-            arb_const_pi(acb_imagref(twopii_on_qeven), prec);
-            acb_mul_ui(twopii_on_qeven, twopii_on_qeven, 2ul, prec);
-            acb_div_ui(twopii_on_qeven, twopii_on_qeven, q_even/4, prec);
+                acb_init(twopii_on_qeven);
+                acb_zero(twopii_on_qeven);
+                arb_const_pi(acb_imagref(twopii_on_qeven), prec);
+                acb_mul_ui(twopii_on_qeven, twopii_on_qeven, 2ul, prec);
+                acb_div_ui(twopii_on_qeven, twopii_on_qeven, q_even/4, prec);
+            }
 #endif
 
 
@@ -263,9 +273,11 @@ public:
 #endif
 
 #ifdef USE_ARB
-                acb_init(zeta_powers_even_acb[n]);
-                acb_mul_ui(zeta_powers_even_acb[n], twopii_on_qeven, n, prec);
-                acb_exp(zeta_powers_even_acb[n], zeta_powers_even_acb[n], prec);
+                if(prec > 0) {
+                    acb_init(zeta_powers_even_acb[n]);
+                    acb_mul_ui(zeta_powers_even_acb[n], twopii_on_qeven, n, prec);
+                    acb_exp(zeta_powers_even_acb[n], zeta_powers_even_acb[n], prec);
+                }
 #endif
 
             }
@@ -299,11 +311,13 @@ public:
 #endif
 
 #ifdef USE_ARB
-            for(int n = 0; n < phi_q_odd; n++) {
-                acb_clear(zeta_powers_odd_acb[n]);
+            if(prec > 0) {
+                for(int n = 0; n < phi_q_odd; n++) {
+                    acb_clear(zeta_powers_odd_acb[n]);
+                }
+                delete [] zeta_powers_odd_acb;
+                acb_clear(twopii_on_qodd);
             }
-            delete [] zeta_powers_odd_acb;
-            acb_clear(twopii_on_qodd);
 #endif
 
             delete [] A;
@@ -325,11 +339,13 @@ public:
 #endif
 
 #ifdef USE_ARB
-            for(int n = 0; n < q_even/4; n++) {
-                acb_clear(zeta_powers_even_acb[n]);
+            if(prec > 0) {
+                for(int n = 0; n < q_even/4; n++) {
+                    acb_clear(zeta_powers_even_acb[n]);
+                }
+                delete [] zeta_powers_even_acb;
+                acb_clear(twopii_on_qeven);
             }
-            delete [] zeta_powers_even_acb;
-            acb_clear(twopii_on_qeven);
 #endif
         }
 
@@ -530,7 +546,7 @@ public:
         // (computed naively, for testing purposes, or because
         //  something better hasn't been implemented yet.)
 
-        
+
         for(int n = 0; n < q; n++) {
             std::complex<double> S = 0.0;
             for(int k = 0; k < q; k++) {

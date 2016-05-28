@@ -89,17 +89,20 @@ int main(int argc, char ** argv) {
     ncoeffs = atoi(argv[4]);
     string outpath(argv[5]);
 
+    int prec = atoi(argv[6]);
+    if(prec == 0) prec = 400;
     int verbose = 0;
-    if(argc > 6) verbose = atoi(argv[6]);
+    if(argc > 7) verbose = atoi(argv[7]);
 
-    DirichletGroup G(level);
+    DirichletGroup G(level, prec);
     if(GCD(level, chi_number) != 1) return 0;
     DirichletCharacter chi = G.character(chi_number);
     if(chi.is_even() && weight % 2 == 1) return 0;
     if(!chi.is_even() && weight % 2 == 0) return 0;
 
-
+    cout << "here1" << endl;
     cuspforms_acb * S = get_cuspforms_acb(chi, weight, verbose);
+    cout << "here2" << endl;
 
     acb_mat_t newforms;
     int dim = S->new_dimension();

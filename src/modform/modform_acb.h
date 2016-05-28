@@ -37,6 +37,7 @@ public:
     int * psi_table;
     int * phi_table;
     int ** gcd_tables;
+    int prec;
 
     acb_t * chi_values;
     acb_t * chip_values;
@@ -70,6 +71,8 @@ public:
         verbose = _verbose;
         chi = _chi.m;
         level = _chi.parent->q;
+        prec = _chi.parent->prec;
+        std::cout << prec << std::endl;
         long primitive_index;
         conductor = _chi.conductor(&primitive_index);
         weight = w;
@@ -111,7 +114,7 @@ public:
             divisor_counts[M] = ndivisors(M);
             if(M % conductor == 0 && M != level) {
                 sublevels.push_back(M);
-                DirichletGroup G(M);
+                DirichletGroup G(M, prec);
                 DirichletCharacter psi = G.character(G.index_from_primitive_character(conductor, primitive_index));
                 cuspforms_acb * S2 = get_cuspforms_acb(psi, weight, verbose);
                 subspaces.push_back(S2);

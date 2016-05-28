@@ -18,6 +18,7 @@
 using namespace std;
 
 const int max_dimension = 25000;
+int prec;
 acb_t roots[max_dimension];
 
 void build_polynomial(acb_poly_t out, int start, int end) {
@@ -32,7 +33,7 @@ void build_polynomial(acb_poly_t out, int start, int end) {
     int mid = (start + end)/2;
     build_polynomial(out, start, mid);
     build_polynomial(a, mid + 1, end);
-    acb_poly_mul(out, out, a, 3*prec);
+    acb_poly_mul(out, out, a, prec);
     //for(int k = start; k < end; k++) {
     //    acb_poly_set_coeff_acb(a, 0, roots[k]);
     //    acb_poly_mul(out, out, a, 4000);
@@ -52,6 +53,8 @@ int main(int argc, char ** argv) {
     int level = atoi(argv[1]);
     int weight = atoi(argv[2]);
     string data_basepath(argv[3]);
+    prec = atoi(argv[4]);
+
 
     for(int k = 0; k < max_dimension; k++) {
         acb_init(roots[k]);
@@ -127,7 +130,7 @@ int main(int argc, char ** argv) {
                     fmpz_set_str(h, x.c_str(), 10);
 
                     acb_set_zzzzzzzz(z, a, b, c, d, e, f, g, h);
-                    acb_sub(roots[k], roots[k], z, 3*prec);
+                    acb_sub(roots[k], roots[k], z, prec);
                     infile.close();
                     n++;
                     k++;

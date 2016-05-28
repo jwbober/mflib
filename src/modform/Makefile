@@ -51,6 +51,7 @@ newforms_acb: arb_extras.o newforms_acb.o modform_acb.o modform_modp.o classnumb
 modp_newforms: modp_newforms.o modform_modp.o classnumbers.o
 print-traces: print-traces.o modform_cc.o modform_modp.o classnumbers.o
 identify-fields: identify-fields.o
+modform_acb.o: modform_acb.h
 
 clean:
 	-rm $(OBJECTS)
