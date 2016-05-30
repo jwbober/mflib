@@ -51,13 +51,21 @@ public:
 
     long trace(int n);
     long trace_TnTm(int n, int m);
+    long trace_TpTnTm(int p, int n, int m);
+            // p is getting confusing.
+            // I suppose I should be computing cuspforms mod l, because
+            // I really don't want to refer to the lth Fourier coeffcient...
+
     void compute_traces(int end);
 
     int dimension();
     int new_dimension();
 
     void newspace_basis(nmod_mat_t basis, int ncoeffs);
-    void newforms(nmod_mat_t forms, int ncoeffs);
+    void newforms(nmod_mat_t forms, int ncoeffs); // I'm not sure what I was
+                                                  // planning for this function to do.
+
+    void hecke_matrix(nmod_mat_t Tp, int n);
 
     const std::vector<int>& newspace_basis_data();
     void basis(nmod_mat_t * basis, int ncoeffs);
@@ -90,6 +98,7 @@ public:
         }
         while(!is_prime(p)) {p += order;}
 
+        std::cout << level << " " << chi << " " << p << std::endl;
         nmod_init(&modp, p);
 
         psi_table = new long[level + 1];

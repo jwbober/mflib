@@ -91,6 +91,32 @@ long cuspforms_modp::trace_TnTm(int n, int m) {
     return TnTm;
 }
 
+long cuspforms_modp::trace_TpTnTm(int p, int n, int m) {
+    //
+    // Return the trace mod p of TpTmTn acting on S_k(chi).
+    //
+    //TODO
+    long trace = 0;
+    if(n*m == 0) {return 0; }
+     compute_traces(n*m*p + 1);
+    int g = GCD(m,n);
+
+    long z = 0;
+    long z2 = 0;
+    for(int d = 1; d <= g; d++) {
+        if(g % d != 0) continue; // this is silly, but this will usually
+                                 // be a short sum
+        if(GCD(d,level) != 1) continue;
+
+        z = nmod_pow_ui(d, weight - 1, modp);
+        z = nmod_mul(z, chi_values[d % level], modp);
+        z2 = trace_TnTm(m/d * n/d, p);
+        z = nmod_mul(z, z2, modp);
+        trace = nmod_add(trace, z, modp);
+    }
+    return trace;
+}
+
 int cuspforms_modp::new_dimension() {
     return trace(1);
 }
@@ -171,6 +197,18 @@ long cuspforms_modp::evalpoly(long t, long n) {
 }
 
 cuspforms_modp * get_cuspforms_modp(DirichletCharacter &chi, int weight, long p, int verbose) {
+    long order = order_mod(chi.m, chi.parent->q);
+    if(p == 0) {
+        p = order + 1;
+        while(p < 10000) p += order;
+    }
+    else {
+        if( (p - 1) % order != 0) {
+            p += order - (p - 1) % order;
+        }
+    }
+    while(!is_prime(p)) {p += order;}
+
     if(verbose > 2) cout << "getting space cuspforms_modp(" << chi.parent->q << ", " << weight << ", " << chi.m << ")" << " with p == " << p << endl;
     auto result = cache.find( space_desc_t(chi.parent->q, chi.m, weight, p) );
     if(result != cache.end()) return result->second;
@@ -260,6 +298,46 @@ void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
     nmod_mat_clear(smallbasis);
     nmod_mat_clear(transformed_basis);
 }
+
+void cuspforms_modp::hecke_matrix(nmod_mat_t Tp, int l) {
+    int dim = new_dimension();
+    vector<int> basis_data = newspace_basis_data();
+    compute_traces(l * basis_data[dim - 1] * basis_data[dim - 1] + 5);
+
+    nmod_mat_t basis;
+    nmod_mat_init(basis, dim, dim, p);
+    for(int k = 0; k < dim; k++) {
+        for(int j = k; j < dim; j++) {
+            int n = basis_data[k];
+            int m = basis_data[j];
+            long z = trace_TnTm(n, m);
+            nmod_mat_entry(basis, j, k) = z;
+            nmod_mat_entry(basis, k, j) = z;
+        }
+    }
+
+    nmod_mat_t Tp_basis;
+    nmod_mat_init(Tp_basis, dim, dim, p);
+
+    for(int k = 0; k < dim; k++) {
+        for(int j = k; j < dim; j++) {
+            int n = basis_data[k];
+            int m = basis_data[j];
+            long z1 = trace_TpTnTm(l, n, m);
+            nmod_mat_entry(Tp_basis, j, k) = z1;
+            nmod_mat_entry(Tp_basis, k, j) = z1;
+        }
+    }
+
+    nmod_mat_init(Tp, dim, dim, p);
+    nmod_mat_solve(Tp, basis, Tp_basis);
+
+    nmod_mat_clear(basis);
+    nmod_mat_clear(Tp_basis);
+}
+
+
+
 
 void cuspforms_modp::newspace_basis(nmod_mat_t basis, int ncoeffs) {
     newspace_basis_data();

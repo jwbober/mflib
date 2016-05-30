@@ -322,7 +322,6 @@ void cuspforms_acb::newspace_basis(acb_mat_t B, int ncoeffs) {
 }
 
 void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
-
     int dim = new_dimension();
     if(verbose) {
         cout << "computing newform basis for space of dimension " << dim << endl;
@@ -331,6 +330,11 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     acb_t z1;
     acb_init(z1);
     vector<int> basis_data = newspace_basis_data();
+    if(verbose > 1) {
+        cout << "basis n for newspace:";
+        for(int n : basis_data) cout << " " << n;
+        cout << endl;
+    }
     int coefficients_needed_for_full_rank = basis_data[dim - 1];
     ncoeffs = std::max(ncoeffs, 2 * coefficients_needed_for_full_rank + 5);
     if(verbose) cout << "computing traces" << endl;
@@ -375,6 +379,7 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
             arb_set(arb_mat_entry(basis, k, j), acb_realref(z1));
         }
     }
+
 
     if(verbose) cout << "computed basis matrix" << endl;
 
@@ -425,6 +430,9 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
         //        rr_Tp_basis(k, j) = arb_get_d(arb_mat_entry(Tp_basis, k, j));
         //    }
         //}
+
+        arb_mat_printd(Tp_basis, 10);
+        cout << endl;
 
         int result = arb_mat_generalized_eigenproblem_symmetric_positive_definite(eigenvalues, eigenvectors, Tp_basis, basis, prec);
 

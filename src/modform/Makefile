@@ -22,7 +22,8 @@ OBJECTS = modform_cc.o \
 	  modform_acb.o \
 	  newforms_acb.o \
 	  arb_extras.o \
-	  identify-fields.o
+	  identify-fields.o \
+	  hecke-polynomial.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
@@ -30,7 +31,8 @@ EXECUTABLES = modp_newbasis \
 	      print-traces \
 	      modp_newforms \
 	      newforms_acb \
-	      identify-fields
+	      identify-fields \
+	      hecke-polynomial
 
 all: $(EXECUTABLES)
 
@@ -51,6 +53,7 @@ newforms_acb: arb_extras.o newforms_acb.o modform_acb.o modform_modp.o classnumb
 modp_newforms: modp_newforms.o modform_modp.o classnumbers.o
 print-traces: print-traces.o modform_cc.o modform_modp.o classnumbers.o
 identify-fields: identify-fields.o
+hecke-polynomial: modform_modp.o hecke-polynomial.o classnumbers.o
 modform_acb.o: modform_acb.h
 
 clean:

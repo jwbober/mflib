@@ -90,7 +90,6 @@ int main(int argc, char ** argv) {
     string outpath(argv[5]);
 
     int prec = atoi(argv[6]);
-    if(prec == 0) prec = 400;
     int verbose = 0;
     if(argc > 7) verbose = atoi(argv[7]);
 
@@ -100,9 +99,7 @@ int main(int argc, char ** argv) {
     if(chi.is_even() && weight % 2 == 1) return 0;
     if(!chi.is_even() && weight % 2 == 0) return 0;
 
-    cout << "here1" << endl;
     cuspforms_acb * S = get_cuspforms_acb(chi, weight, verbose);
-    cout << "here2" << endl;
 
     acb_mat_t newforms;
     int dim = S->new_dimension();

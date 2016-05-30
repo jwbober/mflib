@@ -39,6 +39,7 @@ int main(int argc, char ** argv) {
 
     cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
     nmod_mat_t newforms;
+    cout << "here" << endl;
     S->newforms(newforms, ncoeffs);
 
     return 0;

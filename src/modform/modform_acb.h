@@ -31,7 +31,6 @@ public:
     std::vector<int> sublevels;
     std::vector<int> divisors_of_level;
     std::vector<cuspforms_acb*> subspaces;
-    std::vector<DirichletGroup> sublevel_dirichlet_groups;
 
     int * divisor_counts;
     int * psi_table;
@@ -101,7 +100,7 @@ public:
         }
         divisor_counts = new int[level + 1];
 
-        DirichletGroup G(conductor);
+        DirichletGroup G(conductor, prec);
         DirichletCharacter chip = G.character(primitive_index);
         chip_values = new acb_t[conductor + 1];
         for(int k = 0; k <= conductor; k++) {
