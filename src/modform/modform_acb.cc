@@ -675,10 +675,16 @@ void cuspforms_acb::compute_traces(int end) {
                         //a += chi_values[y];
                     }
                     else {
-                        unsigned long g1, u, v;                     // We are doing a CRT lift
-                        g1 = n_xgcd(&u, &v, c, level/c);            // here, but the moduli might
-                        y = (d + c * u * (n/d - d)/g1) % (level/g); // not be coprime. Hence the
-                        if(y < 0) y += (level/g);                   // complication.
+                        unsigned long g1, u, v;
+                        if(c >= level/c)
+                            g1 = n_xgcd(&u, &v, c, level/c);
+                        else {
+                            g1 = n_xgcd(&v, &u, level/c, c);
+                            u %= level/c;                               // We are doing a CRT lift
+                            u = level/c - u;                            // here, but the moduli might
+                        }
+                        y = (d + c * u * (n/d - d)/g1) % (level/g);     // not be coprime. Hence the
+                        if(y < 0) y += (level/g);                       // complication.
 
                                                                     // XXX: I've got this computation wrong
                         //a = a + phi_table[g] * chi_values[y];       // a few times. I hope it is right now.
