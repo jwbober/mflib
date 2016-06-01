@@ -98,7 +98,6 @@ public:
         }
         while(!is_prime(p)) {p += order;}
 
-        std::cout << level << " " << chi << " " << p << std::endl;
         nmod_init(&modp, p);
 
         psi_table = new long[level + 1];
