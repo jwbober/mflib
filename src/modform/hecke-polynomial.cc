@@ -45,7 +45,8 @@ int main(int argc, char ** argv) {
     if(chi.is_even() && weight % 2 == 1) return 0;
     if(!chi.is_even() && weight % 2 == 0) return 0;
 
-    set<long> orbit = chi.galois_orbit();
+    set<long> _orbit = chi.galois_orbit();
+    vector<long> orbit(_orbit.begin(), _orbit.end());
     cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
     int dim = S->new_dimension();
     if(dim == 0) return 0;
@@ -60,7 +61,7 @@ int main(int argc, char ** argv) {
     fmpz_poly_one(hecke1);
     fmpz_poly_one(hecke2);
 
-    nmod_poly_t f;
+    nmod_poly_t hecke_poly_modp;
 
     fmpz_t a;
     fmpz_t b;
@@ -69,37 +70,67 @@ int main(int argc, char ** argv) {
     fmpz_init(a);
     fmpz_init(b);
     fmpz_init(modulus);
-    fmpz_zero(modulus);
+    fmpz_set_ui(modulus, p);
 
     // start by trying to see if we can find some n such that the characteristic
     // polynomial of T(2) + T(3) + ... + T(n) is squarefree. I don't actually know
     // if this will work well mod p, but I guess it will for large p at least, and
     // I suppose I'll find out quickly if it doesn't.
 
-    int n = 2; {
-        nmod_mat_t hecke_mat;
-        nmod_poly_t hecke_poly;
-        nmod_poly_init(hecke_poly, p);
-        S->hecke_matrix(hecke_mat, 2);
-        nmod_mat_charpoly(hecke_poly, hecke_mat);
-        while(!nmod_poly_is_squarefree(hecke_poly)) {
-            n += 1;
-            nmod_mat_t Tn;
-            S->hecke_matrix(Tn, n);
-            nmod_mat_add(hecke_mat, hecke_mat, Tn);
-            nmod_mat_charpoly(hecke_poly, hecke_mat);
-            nmod_mat_clear(Tn);
-        }
-        nmod_mat_clear(hecke_mat);
-        nmod_poly_clear(hecke_poly);
+    nmod_mat_t hecke_mats[orbit.size()];
+    for(unsigned int k = 0; k < orbit.size(); k++) {
+        nmod_mat_init(hecke_mats[k], dim, dim, p);
+        nmod_mat_zero(hecke_mats[k]);
     }
-    bool finished = false;
-    while(!finished) {
+
+    nmod_poly_init(hecke_poly_modp, p);
+    int n = 1; {
+        nmod_poly_t f;
         nmod_poly_init(f, p);
-        nmod_poly_one(f);
+
+        do {
+            n += 1;
+            nmod_poly_one(hecke_poly_modp);
+            for(unsigned int k = 0; k < orbit.size(); k++) {
+                chi = G.character(orbit[k]);
+                cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+                nmod_mat_t Tn;
+                S->hecke_matrix(Tn, n);
+                nmod_mat_add(hecke_mats[k], hecke_mats[k], Tn);
+                nmod_mat_charpoly(f, hecke_mats[k]);
+                nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
+                nmod_mat_clear(Tn);
+            }
+        } while(!nmod_poly_is_squarefree(hecke_poly_modp));
+
+        int degree = nmod_poly_degree(hecke_poly_modp);
+        for(int k = 0; k <= degree; k++) {
+            long z = nmod_poly_get_coeff_ui(hecke_poly_modp, k);
+            if(z > p/2) {
+                z -= p;
+            }
+            fmpz_poly_set_coeff_si(hecke2, k, z);
+        }
+        nmod_poly_clear(f);
+    }
+    for(unsigned int k = 0; k < orbit.size(); k++) {
+        nmod_mat_clear(hecke_mats[k]);
+    }
+
+    nmod_poly_clear(hecke_poly_modp);
+
+    do {
+        fmpz_poly_set(hecke1, hecke2);
+        p += 1;
+        cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+        p = S->p;
+        //cout << p << endl;
+        nmod_poly_init(hecke_poly_modp, p);
+        nmod_poly_one(hecke_poly_modp);
+        nmod_poly_t f;
+        nmod_poly_init(f, p);
         for(long m : orbit) {
             chi = G.character(m);
-            //cout << "computing space S_" << weight << "(" << level << "," << m << ")" << endl;
             cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
             p = S->p;
             nmod_mat_t hecke_mat;
@@ -110,52 +141,28 @@ int main(int argc, char ** argv) {
                 nmod_mat_add(hecke_mat, hecke_mat, Tl);
                 nmod_mat_clear(Tl);
             }
-            //cout << "computed the space." << endl;
-            //nmod_mat_print_pretty(Tl);
-            nmod_poly_t hecke_poly;
-            nmod_poly_init(hecke_poly, p);
-            nmod_mat_charpoly(hecke_poly, hecke_mat);
-            //cout << p << " " << m << " ";
-            //nmod_poly_print_pretty(hecke_poly, "x");
-            //cout << endl;
-            nmod_poly_mul(f, f, hecke_poly);
-            nmod_poly_clear(hecke_poly);
+            nmod_mat_charpoly(f, hecke_mat);
+            nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
             nmod_mat_clear(hecke_mat);
         }
-        if(fmpz_cmp_ui(modulus, 0) != 0) {
-            int degree = nmod_poly_degree(f);
-            for(int k = 0; k <= degree; k++) {
-                fmpz_poly_get_coeff_fmpz(a, hecke1, k);
-                unsigned long z = nmod_poly_get_coeff_ui(f, k);
-                fmpz_CRT_ui(a, a, modulus, z, p, 1);
-                fmpz_poly_set_coeff_fmpz(hecke2, k, a);
-            }
+        int degree = nmod_poly_degree(hecke_poly_modp);
+        for(int k = 0; k <= degree; k++) {
+            fmpz_poly_get_coeff_fmpz(a, hecke1, k);
+            unsigned long z = nmod_poly_get_coeff_ui(hecke_poly_modp, k);
+            fmpz_CRT_ui(a, a, modulus, z, p, 1);
+            fmpz_poly_set_coeff_fmpz(hecke2, k, a);
+        }
+        fmpz_mul_ui(modulus, modulus, p);
 
-            if(fmpz_poly_equal(hecke1, hecke2)) {
-                finished = true;
-            }
-            else {
-                fmpz_mul_ui(modulus, modulus, p);
-                fmpz_poly_set(hecke1, hecke2);
-            }
-            fmpz_poly_get_coeff_fmpz(a, hecke1, 0);
-        }
-        else {
-            fmpz_set_ui(modulus, p);
-            int degree = nmod_poly_degree(f);
-            for(int k = 0; k <= degree; k++) {
-                unsigned long z = nmod_poly_get_coeff_ui(f, k);
-                fmpz_poly_set_coeff_ui(hecke1, k, z);
-            }
-        }
-        p += 1;
-        cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
-        p = S->p;
         nmod_poly_clear(f);
-    }
+        nmod_poly_clear(hecke_poly_modp);
+    } while(!fmpz_poly_equal(hecke1, hecke2));
 
     if(!fmpz_poly_is_squarefree(hecke1)) {
         cout << "something went wrong." << endl;
+        cout << n << " ";
+        fmpz_poly_print_pretty(hecke1, "x");
+        cout << endl;
         return 1;
     }
     cout << level << " " << weight;
