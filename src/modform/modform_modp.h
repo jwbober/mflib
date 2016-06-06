@@ -22,6 +22,7 @@ static long psi(int N) {
 
 class cuspforms_modp;
 cuspforms_modp * get_cuspforms_modp(DirichletCharacter &chi, int weight, long p, int verbose = 0);
+void clear_cuspforms_modp();
 
 class cuspforms_modp {
 public:

@@ -218,6 +218,13 @@ cuspforms_modp * get_cuspforms_modp(DirichletCharacter &chi, int weight, long p,
     return S;
 }
 
+void clear_cuspforms_modp() {
+    for(auto x : cache) {
+        delete x.second;
+    }
+    cache.clear();
+}
+
 void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
     int dim = new_dimension();
     vector<int> basis_data = newspace_basis_data();

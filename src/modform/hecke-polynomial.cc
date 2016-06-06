@@ -164,6 +164,7 @@ int main(int argc, char ** argv) {
 
         nmod_poly_clear(f);
         nmod_poly_clear(hecke_poly_modp);
+        clear_cuspforms_modp();
     } while(!fmpz_poly_equal(hecke1, hecke2));
 
     if(!fmpz_poly_is_squarefree(hecke1)) {
