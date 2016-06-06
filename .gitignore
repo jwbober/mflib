@@ -65,3 +65,9 @@ print-traces
 prec_errors.lst
 print_form.py
 print_form.sage
+out*
+perf.*
+arb_test
+hecke-polynomial
+hecke-polynomials
+cat-binary-format

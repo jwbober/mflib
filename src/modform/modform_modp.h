@@ -46,6 +46,7 @@ public:
     long * chip_values;
 
     std::vector<int> basis_rows;
+    std::vector<int> basis_rows2;
 
     std::vector<long> traces;
 
@@ -67,7 +68,7 @@ public:
 
     void hecke_matrix(nmod_mat_t Tp, int n);
 
-    const std::vector<int>& newspace_basis_data();
+    const std::vector<int>& newspace_basis_data(bool coprime_only = true);
     void basis(nmod_mat_t * basis, int ncoeffs);
 
     long evalpoly(long t, long n);

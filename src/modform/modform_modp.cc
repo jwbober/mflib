@@ -301,7 +301,14 @@ void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
 
 void cuspforms_modp::hecke_matrix(nmod_mat_t Tp, int l) {
     int dim = new_dimension();
-    vector<int> basis_data = newspace_basis_data();
+    vector<int> basis_data = newspace_basis_data(false);
+    if(verbose) {
+        cout << "using basis rows";
+        for(int k : basis_data) {
+            cout << " " << k;
+        }
+        cout << endl;
+    }
     compute_traces(l * basis_data[dim - 1] * basis_data[dim - 1] + 5);
 
     nmod_mat_t basis;
@@ -357,8 +364,9 @@ void cuspforms_modp::newspace_basis(nmod_mat_t basis, int ncoeffs) {
     }
 }
 
-const vector<int>& cuspforms_modp::newspace_basis_data() {
-    if(basis_rows.size() > 0) return basis_rows;
+const vector<int>& cuspforms_modp::newspace_basis_data(bool coprime_only) {
+    if(basis_rows.size() > 0 && coprime_only) return basis_rows;
+    if(basis_rows2.size() > 0 && !coprime_only) return basis_rows2;
     int d = new_dimension();
     if(d == 0) return basis_rows;
     nmod_mat_t basis;
@@ -366,13 +374,20 @@ const vector<int>& cuspforms_modp::newspace_basis_data() {
     compute_traces(d*d);
     int n = 1;
     int row = 0;
+    vector<int> *basis_rows_ptr;
+    if(coprime_only) {
+        basis_rows_ptr = &basis_rows;
+    }
+    else {
+        basis_rows_ptr = &basis_rows2;
+    }
     while(row < d) {
-        while(GCD(n, level) > 1) n++;
-        basis_rows.push_back(n);
+        if(coprime_only) {while(GCD(n, level) > 1) n++;}
+        basis_rows_ptr->push_back(n);
         int m = 1;
         int col = 0;
         while(col < d) {
-            while(GCD(m, level) > 1) n++;
+            if(coprime_only) {while(GCD(m, level) > 1) n++;}
             //for(int m = 1; m < d + 1; m++) {
             nmod_mat_entry(basis, row, col) = trace_TnTm(n, m);
             col++;
@@ -388,13 +403,13 @@ const vector<int>& cuspforms_modp::newspace_basis_data() {
 
     int k = 0;
     n = 1;
-    basis_rows.clear();
+    basis_rows_ptr->clear();
 
     while(k < d) {
-        while(GCD(n, level) != 1) n++;
+        if(coprime_only) {while(GCD(n, level) != 1) n++;}
         for(int j = 0; j < k; j++) {
             //while(GCD(m, level) != 1) m++;
-            int m = basis_rows[j];
+            int m = basis_rows_ptr->at(j);
             long t = trace_TnTm(n,m);
             nmod_mat_entry(basis, k, j) = t;
             nmod_mat_entry(basis, j, k) = t;
@@ -413,13 +428,13 @@ const vector<int>& cuspforms_modp::newspace_basis_data() {
         //cout << endl;
         if(nmod_mat_det(topleft) != 0) {
             k++;
-            basis_rows.push_back(n);
+            basis_rows_ptr->push_back(n);
         }
         //cout << nmod_mat_rank(topleft) << " " << k << " " << n << endl;
         n++;
         nmod_mat_clear(topleft);
     }
-    return basis_rows;
+    return *basis_rows_ptr;
 }
 
 void cuspforms_modp::compute_traces(int end) {
@@ -454,7 +469,7 @@ void cuspforms_modp::compute_traces(int end) {
     //cout << "computing A2 for level " << level << endl;
 
     long print_interval = 0;
-    if(verbose > 0) { 
+    if(verbose > 1) { 
         cerr << "level " << level << endl;
         cerr << "start = " << start << " end = " << end << endl;
         cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l); }
@@ -476,7 +491,7 @@ void cuspforms_modp::compute_traces(int end) {
     int t = sqrt(4*end);
     if(t*t == 4*end) t--;
     for(t = -t; (long)t*t < 4l*end; t++) {
-        if(verbose > 0 && t % print_interval == 0)  {
+        if(verbose > 1 && t % print_interval == 0)  {
             cerr << '.';
             cerr.flush();
         }
@@ -530,14 +545,14 @@ void cuspforms_modp::compute_traces(int end) {
     }
     delete [] square_divisors;
     delete [] square_divisors_indices;
-    if(verbose > 0) { cerr << endl; cerr.flush(); }
+    if(verbose > 1) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
     //cout << "After A2: trace(T1) = " << traces[1] << endl;
     //cout << "After A2: trace(T2) = " << traces[2] << endl;
 
-    if(verbose > 0) { cerr << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
+    if(verbose > 1) { cerr << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
     for(int d = 1; d*d < end; d++) {
-        if(verbose > 0 && d % print_interval == 0) {
+        if(verbose > 1 && d % print_interval == 0) {
             cerr << '.';
             cerr.flush();
         }
@@ -588,7 +603,7 @@ void cuspforms_modp::compute_traces(int end) {
             traces[n] = nmod_sub(traces[n], a, modp);       // traces -= d*a mod p
         }
     }
-    if(verbose > 0) { cerr << endl; cerr.flush(); }
+    if(verbose > 1) { cerr << endl; cerr.flush(); }
     //cout << traces[1] << endl;
     //cout << "After A3: trace(T1) = " << traces[1] << endl;
     //cout << "After A3: trace(T2) = " << traces[2] << endl;

@@ -38,6 +38,8 @@ int main(int argc, char ** argv) {
 
     int verbose = 0;
     if(argc > 5) verbose = atoi(argv[5]);
+    int verbose2 = 0;
+    if(verbose > 0) verbose2 = verbose - 1;
 
     DirichletGroup G(level);
     if(GCD(level, chi_number) != 1) return 0;
@@ -47,7 +49,7 @@ int main(int argc, char ** argv) {
 
     set<long> _orbit = chi.galois_orbit();
     vector<long> orbit(_orbit.begin(), _orbit.end());
-    cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+    cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
     int dim = S->new_dimension();
     if(dim == 0) return 0;
     p = S->p;
@@ -90,10 +92,13 @@ int main(int argc, char ** argv) {
 
         do {
             n += 1;
+            if(verbose) {
+                cout << n << endl;
+            }
             nmod_poly_one(hecke_poly_modp);
             for(unsigned int k = 0; k < orbit.size(); k++) {
                 chi = G.character(orbit[k]);
-                cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+                cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
                 nmod_mat_t Tn;
                 S->hecke_matrix(Tn, n);
                 nmod_mat_add(hecke_mats[k], hecke_mats[k], Tn);
@@ -118,20 +123,23 @@ int main(int argc, char ** argv) {
     }
 
     nmod_poly_clear(hecke_poly_modp);
+    if(verbose) {
+        cout << "finished initial work." << endl;
+    }
 
     do {
         fmpz_poly_set(hecke1, hecke2);
         p += 1;
-        cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+        cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
         p = S->p;
-        //cout << p << endl;
+        if(verbose) cout << p << endl;
         nmod_poly_init(hecke_poly_modp, p);
         nmod_poly_one(hecke_poly_modp);
         nmod_poly_t f;
         nmod_poly_init(f, p);
         for(long m : orbit) {
             chi = G.character(m);
-            cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose);
+            cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
             p = S->p;
             nmod_mat_t hecke_mat;
             S->hecke_matrix(hecke_mat, 2);
