@@ -201,5 +201,12 @@ int main(int argc, char ** argv) {
     clock_t end_time = clock();
     cout << (end_time - start_time)/(double)CLOCKS_PER_SEC << endl;
 
+    fmpz_clear(a);
+    fmpz_clear(b);
+    fmpz_clear(modulus);
+
+    fmpz_poly_clear(hecke1);
+    fmpz_poly_clear(hecke2);
+    flint_cleanup();
     return 0;
 }

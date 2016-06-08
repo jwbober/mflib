@@ -439,8 +439,9 @@ const vector<int>& cuspforms_modp::newspace_basis_data(bool coprime_only) {
         }
         //cout << nmod_mat_rank(topleft) << " " << k << " " << n << endl;
         n++;
-        nmod_mat_clear(topleft);
+        nmod_mat_window_clear(topleft);
     }
+    nmod_mat_clear(basis);
     return *basis_rows_ptr;
 }
 
