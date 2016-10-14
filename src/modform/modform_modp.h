@@ -60,6 +60,7 @@ public:
 
     void compute_traces(int end);
 
+    int _dimension = -1;
     int dimension();
     int new_dimension();
 
@@ -70,7 +71,7 @@ public:
     void hecke_matrix(nmod_mat_t Tp, int n);
 
     const std::vector<int>& newspace_basis_data(bool coprime_only = true);
-    void basis(nmod_mat_t * basis, int ncoeffs);
+    void basis(nmod_mat_t basis, int ncoeffs);
 
     long evalpoly(long t, long n);
 

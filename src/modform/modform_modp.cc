@@ -121,6 +121,11 @@ int cuspforms_modp::new_dimension() {
     return trace(1);
 }
 
+int cuspforms_modp::dimension() {
+    compute_traces(2);
+    return _dimension;
+}
+
 long cuspforms_modp::evalpoly(long t, long n) {
     // translated from Ralph's code
     int k = weight - 2;
@@ -351,8 +356,6 @@ void cuspforms_modp::hecke_matrix(nmod_mat_t Tp, int l) {
 }
 
 
-
-
 void cuspforms_modp::newspace_basis(nmod_mat_t basis, int ncoeffs) {
     newspace_basis_data();
     int d = new_dimension();
@@ -369,6 +372,40 @@ void cuspforms_modp::newspace_basis(nmod_mat_t basis, int ncoeffs) {
             nmod_mat_entry(basis, k, m) = trace_TnTm(n, m);
         }
     }
+}
+
+void cuspforms_modp::basis(nmod_mat_t basis_mat, int ncoeffs) {
+    //nmod_mat_t * bases_for_new_spaces = new nmod_mat_t[subspaces.size() + 1];
+    //for(int k = 0; k < subspaces.size(); k++) {
+    //    subspaces[k]->newspace_basis(bases_for_new_spaces[k], ncoeffs);
+    //}
+    nmod_mat_init(basis_mat, dimension(), ncoeffs + 1, p);
+
+    int r = 0;
+
+    for(int k = 0; k <= subspaces.size(); k++) {
+    //for(cuspforms_modp* subspace: subspaces) {
+        cuspforms_modp * subspace;
+        if(k < subspaces.size()) {
+            subspace = subspaces[k];
+        }
+        else {
+            subspace = this;
+        }
+        nmod_mat_t subspace_basis;
+        subspace->newspace_basis(subspace_basis, ncoeffs);
+        int M1 = subspace->level;
+        for(auto M2 : divisors(level/M1)) {
+            for(int l = 0; l < nmod_mat_nrows(subspace_basis); l++) {
+                for(int j = 1; j*M2 < ncoeffs; j++) {
+                    nmod_mat_entry(basis_mat, r, j * M2) = nmod_mat_entry(subspace_basis, l, j);
+                }
+                r++;
+            }
+        }
+        nmod_mat_clear(subspace_basis);
+    }
+
 }
 
 const vector<int>& cuspforms_modp::newspace_basis_data(bool coprime_only) {
@@ -636,6 +673,10 @@ void cuspforms_modp::compute_traces(int end) {
     //cout << "After A4: trace(T1) = " << traces[1] << endl;
     //cout << "After A4: trace(T2) = " << traces[2] << endl;
 
+    // before sieving, record the dimension of the full space,
+    // provided that the dimension hasn't already been set.
+    if(_dimension == -1)
+        _dimension = traces[1];
     // now we sieve.
 
     int q = conductor;

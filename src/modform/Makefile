@@ -2,7 +2,7 @@ CC = g++
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -DUSE_ARB -Wno-unused-function
+CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -Wno-sign-compare -DUSE_ARB -Wno-unused-function
 CFLAGS = -O2 -g -I/home/bober/include/flint -Wall
 ifdef STATIC_LIB_DIR
     LDLIBS = -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a
@@ -23,7 +23,9 @@ OBJECTS = modform_cc.o \
 	  newforms_acb.o \
 	  arb_extras.o \
 	  identify-fields.o \
-	  hecke-polynomial.o
+	  hecke-polynomial.o \
+	  modp_basis.o \
+	  weight1.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
@@ -32,7 +34,9 @@ EXECUTABLES = modp_newbasis \
 	      modp_newforms \
 	      newforms_acb \
 	      identify-fields \
-	      hecke-polynomial
+	      hecke-polynomial \
+	      modp_basis \
+	      weight1
 
 all: $(EXECUTABLES)
 
@@ -47,7 +51,9 @@ classnumbers.o: classnumbers.cc
 identify-fields.o: identify-fields.cc $(INCLUDE)/slint.h $(INCLUDE)/characters.h
 
 modp_newbasis: modform_modp.o modp_newbasis.o classnumbers.o
+modp_basis: modform_modp.o modp_basis.o classnumbers.o
 modp_trace: modform_modp.o modp_trace.o classnumbers.o
+weight1: modform_modp.o weight1.o classnumbers.o
 newforms: newforms.o modform_cc.o modform_modp.o classnumbers.o
 newforms_acb: arb_extras.o newforms_acb.o modform_acb.o modform_modp.o classnumbers.o modform_cc.o
 modp_newforms: modp_newforms.o modform_modp.o classnumbers.o
