@@ -1,6 +1,6 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include "acb.h"
+The file should start with the 32 bit unsigned integer 3229261 (ascii string "MF1\0".
+
+This is followed by
 
 struct mfheader {
     uint32_t level;
@@ -11,6 +11,10 @@ struct mfheader {
     uint32_t prec;
     uint32_t ncoeffs;
 };
+
+Provided that this struct is completely packed. To be safe, I suppose it should
+be read or written an entry at a time, though in practice I imagine that's not
+necessary. So you might use
 
 int write_mfheader(FILE * outfile, struct mfheader * header) {
     if(!fwrite((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
@@ -23,6 +27,8 @@ int write_mfheader(FILE * outfile, struct mfheader * header) {
     return 1;
 }
 
+and
+
 int read_mfheader(FILE * infile, struct mfheader * header) {
     if(!fread((char*)&header->level, sizeof(header->level), 1, infile)) return 0;
     if(!fread((char*)&header->weight, sizeof(header->weight), 1, infile)) return 0;
@@ -34,44 +40,22 @@ int read_mfheader(FILE * infile, struct mfheader * header) {
     return 1;
 }
 
-int main(int argc, char ** argv) {
-    FILE * infile = fopen(argv[1], "r");
+(Everything is little-endian, I suppose, since I'm always on x86.)
 
-    unsigned int magic;
-    fread( &magic, sizeof(magic), 1, infile);
-    if(magic != 3229261) {
-        printf("wrong file format or error reading file.\n");
-        return -1;
-    }
+The orbit may be zero, indicating that there is no orbit information.
+Otherwise it is a positive number. j is a number between 0 and d-1, where d
+is either the dimension of the orbit or of the full space.
 
-    struct mfheader header;
-    read_mfheader(infile, &header);
+This header is followed by
 
-    printf("%d.%d.%d.%d.%d\n", header.level, header.weight, header.chi, header.orbit, header.j);
-    fmpz_t x;
-    fmpz_t y;
-    fmpz_init(x);
-    fmpz_init(y);
-    acb_t z;
-    acb_init(z);
+DATA:
+If chi == 1: M integers, output using fmpz_out_raw(). readable by fmpz_inp_raw(),
+corresponding to the coeffcients of the modular form.
 
-    acb_t a;
-    acb_init(a);
+If chi != 1: 2M integers, output using fmpz_out_raw(). readable by fmpz_inp_raw(),
+each pair corresponding to the real and imaginary parts of the coefficients.
 
-    for(int k = 0; k < header.ncoeffs; k++) {
-        fmpz_inp_raw(x, infile);
-        if(header.chi != 1)
-            fmpz_inp_raw(y, infile);
-        acb_set_fmpz_fmpz(z, x, y);
-        mag_set_ui(arb_radref(acb_realref(z)), 1);
-        if(header.chi != 1)
-            mag_set_ui(arb_radref(acb_imagref(z)), 1);
-        acb_mul_2exp_si(z, z, -(long)header.prec);
-        acb_printd(z, 20);
-        printf("\n");
-    }
-    //acb_printd(a, 10);
+If prec == 2^32 - 1, then each integer x is exact. Otherwise, each integer x
+represents the interval x*2^{-prec} +/- 2^{-prec}.
 
-    fmpz_clear(x);
-    fmpz_clear(y);
-}
+The first coeffcient in each file will be a 1. (Or a small interval containing 1.)

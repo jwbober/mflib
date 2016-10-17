@@ -36,7 +36,9 @@ EXECUTABLES = modp_newbasis \
 	      identify-fields \
 	      hecke-polynomial \
 	      modp_basis \
-	      weight1
+	      weight1 \
+	      convert-to-binary \
+	      cat-binary-format
 
 all: $(EXECUTABLES)
 
@@ -61,6 +63,7 @@ print-traces: print-traces.o modform_cc.o modform_modp.o classnumbers.o
 identify-fields: identify-fields.o
 hecke-polynomial: modform_modp.o hecke-polynomial.o classnumbers.o
 modform_acb.o: modform_acb.h
+#cat-binary-file.o: cat-binary-file.c
 
 clean:
 	-rm $(OBJECTS)
