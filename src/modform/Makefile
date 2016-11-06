@@ -63,7 +63,8 @@ print-traces: print-traces.o modform_cc.o modform_modp.o classnumbers.o
 identify-fields: identify-fields.o
 hecke-polynomial: modform_modp.o hecke-polynomial.o classnumbers.o
 modform_acb.o: modform_acb.h
-#cat-binary-file.o: cat-binary-file.c
+cat-binary-file.o: mfformat.h
+convert-to-binary: mfformat.h
 
 clean:
 	-rm $(OBJECTS)

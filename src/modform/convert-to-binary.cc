@@ -8,8 +8,9 @@
 
 #include "acb.h"
 
-using namespace std;
+#include "mfformat.h"
 
+using namespace std;
 
 // Taken from http://stackoverflow.com/questions/236129/split-a-string-in-c/7408245#7408245
 std::vector<std::string> split(const std::string &text, char sep) {
@@ -85,28 +86,6 @@ int parse_textfile(acb_ptr out, string filename, int maxlines) {
 
 const int lines_expected = 4000;
 
-// 3229261
-struct mfheader {
-    uint32_t level;
-    uint32_t weight;
-    uint32_t chi;
-    uint32_t orbit;
-    uint32_t j;
-    uint32_t prec;
-    uint32_t ncoeffs;
-};
-
-int write_mfheader(FILE * outfile, struct mfheader * header) {
-    if(!fwrite((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->weight, sizeof(header->weight), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->chi, sizeof(header->chi), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->orbit, sizeof(header->orbit), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->j, sizeof(header->j), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->prec, sizeof(header->prec), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->ncoeffs, sizeof(header->ncoeffs), 1, outfile)) return 0;
-    return 1;
-}
-
 int main(int argc, char ** argv) {
     const char * usage =
         "convert-to-binary infile outfile [prec] [ncoeffs]\n"
@@ -125,7 +104,7 @@ int main(int argc, char ** argv) {
         cout << usage;
         return 0;
     }
-    slong prec = 4294967295;
+    slong prec = MF_PREC_EXACT;
     if(argc > 3) {
         prec = atol(argv[3]);
     }
@@ -164,41 +143,41 @@ int main(int argc, char ** argv) {
         //cout << error_bound << endl;
     }
 
-
-    if(prec == 4294967295) {
-        prec = -max_error - 1;
+    if(max_error == -ARF_PREC_EXACT) {
+        prec = MF_PREC_EXACT;
+    }
+    else if(prec == MF_PREC_EXACT || prec < max_error + 1) {
+        prec = max_error + 1;
     }
 
-    cout << prec << endl;
-    cout << max_error << endl;
+    //if(prec > -max_error - 1) {
+    //    cout << "Input file not precise enough." << endl;
+    //    return -1;
+    //}
 
-    if(prec > -max_error - 1) {
-        cout << "Input file not precise enough." << endl;
-        return -1;
-    }
-
-    if(prec > 100000) {
+    if(abs(prec) > 100000 && prec != MF_PREC_EXACT) {
         cout << "Something went wrong or the precision is too large. You don't want to do this." << endl;
-        return -1;
-    }
-
-    if(prec < 0) {
-        cout << "negative precision not supported." << endl;
         return -1;
     }
 
     int a = infilename.rfind("/");
     string basefilename = infilename.substr(a+1);
 
-    cout  << basefilename << endl;
     vector<string> z = split(basefilename, '.');
     mfheader header;
+    header.version = 3229261;
     header.level = atoi(z[0].c_str());
     header.weight = atoi(z[1].c_str());
     header.chi = atoi(z[2].c_str());
     header.orbit = 0;
     header.j = atoi(z[3].c_str());
     header.prec = prec;
+    if(prec == MF_PREC_EXACT) {
+        header.exponent = 0;
+    }
+    else {
+        header.exponent = prec;
+    }
     header.ncoeffs = lines;
 
     fmpz_t x;
@@ -206,24 +185,28 @@ int main(int argc, char ** argv) {
     fmpz_init(x);
     fmpz_init(y);
 
+    a = outfilename.rfind("/");
+    if(a != string::npos) {
+        string outpath = outfilename.substr(0, a);
+        string command = "mkdir -p " + outpath;
+        system(command.c_str());
+    }
     FILE * outfile = fopen(outfilename.c_str(), "w");
 
-    cout << header.level << " " << header.weight << " " << header.chi << " " << header.j << endl;
-    unsigned int magic = 3229261;
-    fwrite( (void*)&magic, sizeof(magic), 1, outfile);
+    //cout << infilename << " " << header.level << " " << header.weight << " " << header.chi << " " << header.j << " " << outfilename << endl;
     write_mfheader(outfile, &header);
 
     for(int k = 0; k < lines; k++) {
-        acb_mul_2exp_si(coeffs + k, coeffs + k, prec);
+        acb_mul_2exp_si(coeffs + k, coeffs + k, -header.exponent);
         if( !arb_get_unique_fmpz(x, acb_realref(coeffs + k)) ) {
-            arb_floor(acb_realref(coeffs + k), acb_realref(coeffs + k), prec + 100);
+            arb_floor(acb_realref(coeffs + k), acb_realref(coeffs + k), -prec + 100);
             if( !arb_get_unique_fmpz(x, acb_realref(coeffs + k)) ) {
                 cout << "error" << endl;
                 exit(0);
             }
         }
         if( !arb_get_unique_fmpz(y, acb_imagref(coeffs + k)) ) {
-            arb_floor(acb_imagref(coeffs + k), acb_imagref(coeffs + k), prec + 100);
+            arb_floor(acb_imagref(coeffs + k), acb_imagref(coeffs + k), -prec + 100);
             if( !arb_get_unique_fmpz(y, acb_imagref(coeffs + k)) ) {
                 cout << "error" << endl;
                 exit(0);

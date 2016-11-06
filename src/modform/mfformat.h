@@ -1,6 +1,20 @@
-See also mfformat.h and cat-binary-format.c for examples.
+#ifndef _MFFORMAT_H_
+#define _MFFORMAT_H_
 
-Each file should start with
+#ifdef __cplusplus
+#include <cstdint>
+#include <cstdio>
+using std::fwrite;
+using std::fread;
+using std::FILE;
+#else
+#include <stdint.h>
+#include <stdio.h>
+#endif
+
+#include "acb.h"
+
+const long MF_PREC_EXACT = 2147483647;
 
 struct mfheader {
     uint32_t version; // == 3229261 (ascii string "MF1\0")
@@ -15,11 +29,7 @@ struct mfheader {
     char reserved[92];
 }; // For a grand total of 128 bytes, since that is a nice round number.
 
-provided that this struct has no padding. To be safe, I suppose it should be
-read or written an entry at a time. (Though in practice I imagine that's not
-necessary.) So you might use
-
-int write_mfheader(FILE * outfile, struct mfheader * header) {
+static int write_mfheader(FILE * outfile, struct mfheader * header) {
     if(!fwrite((char*)&header->version, sizeof(header->version), 1, outfile)) return 0;
     if(!fwrite((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
     if(!fwrite((char*)&header->weight, sizeof(header->weight), 1, outfile)) return 0;
@@ -33,9 +43,7 @@ int write_mfheader(FILE * outfile, struct mfheader * header) {
     return 1;
 }
 
-and
-
-int read_mfheader(FILE * outfile, struct mfheader * header) {
+static int read_mfheader(FILE * outfile, struct mfheader * header) {
     if(!fread((char*)&header->version, sizeof(header->version), 1, outfile)) return 0;
     if(header->version != 3229261) return 0;
     if(!fread((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
@@ -50,29 +58,17 @@ int read_mfheader(FILE * outfile, struct mfheader * header) {
     return 1;
 }
 
-(Everything is little-endian, I suppose, since I'm always on x86.)
+static void acb_set_mfcoeff(acb_t out, fmpz_t x, fmpz_t y, struct mfheader * header) {
+    acb_set_fmpz_fmpz(out, x, y);
+    acb_mul_2exp_si(out, out, header->exponent);
+    if(header->prec != MF_PREC_EXACT) {
+        mag_set_ui(arb_radref(acb_realref(out)), 1);
+        mag_mul_2exp_si(arb_radref(acb_realref(out)), arb_radref(acb_realref(out)), header->prec);
+        if(header->chi != 1) {
+            mag_set_ui(arb_radref(acb_imagref(out)), 1);
+            mag_mul_2exp_si(arb_radref(acb_imagref(out)), arb_radref(acb_imagref(out)), header->prec);
+        }
+    }
+}
 
-The orbit may be zero, indicating that there is no orbit information.
-Otherwise it is a positive number. j is a number between 0 and d-1, where d is
-either the dimension of the orbit or of the full space.
-
-This header is followed by coefficient data. The data come in (real,imaginary)
-pairs for nontrivial characters, but for the trivial character only the real
-part is included (since the imaginary part is always zero). Each entry is an
-integer x, say, which is the output of fmpz_out_raw(), so can be read by
-fmpz_inp_raw(). The actual (real or imaginary) part is then the interval x *
-2^exponent +/- 2^prec, unless prec == 2^31 - 1, in which case x*2^exponent is
-exact.
-
-There will be 2*ncoeffs worth of data if chi is nontrivial (to be read in with
-2*ncoeffs calls to fmpz_inp_raw), or ncoeffs worth of data if chi is trivial.
-
-The first coefficient in each file will be a 1, since these are all newforms.
-(Technically it is a small interval around 1, but it can be assumed to be
-exact.)
-
-Perhaps I'm being silly with the extra reserved space. It's there to maybe
-minimize headaches in case of additions to the header. One possible planned
-change is to sometimes specify coefficients as exact quadratic algebraic
-integers, but that's going to require a version change anyway. Anyway, it's
-a very small amount of wasted space, percentagewise.
+#endif

@@ -89,7 +89,7 @@ int main(int argc, char ** argv) {
         if(abs(x) < 1e-20) x = 0;
         if(abs(y) < 1e-20) y = 0;
         complex<double> z(x,y);
-        cout << k + 1 << " " << z << "\t\t";
+        cout << k + 1 << " " << abs(x) << "\t" << z << "\t\t";
         acb_printd(coeffs + k, 10);
         cout  << endl;
         //cout << endl;
