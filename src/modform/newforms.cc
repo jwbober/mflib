@@ -34,6 +34,11 @@ int main(int argc, char ** argv) {
 
     init_classnumbers();
 
+    if(argc < 5) {
+        cout << "usage: ./newforms level chi weight ncoeffs [verbose]" << endl;
+        return 0;
+    }
+
     level = atoi(argv[1]);
     chi_number = atoi(argv[2]);
     weight = atoi(argv[3]);

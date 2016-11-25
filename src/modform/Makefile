@@ -26,7 +26,8 @@ OBJECTS = modform_cc.o \
 	  hecke-polynomial.o \
 	  modp_basis.o \
 	  weight1.o \
-	  cat-binary-format.o
+	  cat-binary-format.o \
+	  print-mftextfile.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
@@ -39,7 +40,8 @@ EXECUTABLES = modp_newbasis \
 	      modp_basis \
 	      weight1 \
 	      convert-to-binary \
-	      cat-binary-format
+	      cat-binary-format \
+	      print-mftextfile
 
 all: $(EXECUTABLES)
 

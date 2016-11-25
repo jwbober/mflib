@@ -24,6 +24,11 @@ int main(int argc, char ** argv) {
     int weight;
     long p;
 
+    if(argc < 5) {
+        cout << "./hecke-polynomial level weight chi p [verbose]" << endl;
+        return 0;
+    }
+
     init_classnumbers();
 
     level = atoi(argv[1]);

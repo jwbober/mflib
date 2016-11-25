@@ -81,6 +81,10 @@ int main(int argc, char ** argv) {
     int weight;
     int ncoeffs;
 
+    if(argc < 7) {
+        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec [verbose]" << endl;
+        return 0;
+    }
     init_classnumbers();
 
     level = atoi(argv[1]);
