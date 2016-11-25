@@ -1,13 +1,13 @@
-CC = g++
+CC = gcc
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
 CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -Wno-sign-compare -DUSE_ARB -Wno-unused-function
 CFLAGS = -O2 -g -I/home/bober/include/flint -Wall
 ifdef STATIC_LIB_DIR
-    LDLIBS = -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a
+    LDLIBS = -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a -lstdc++ -lm
 else
-    LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl -lpthread
+    LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl -lpthread -lstdc++ -lm
 endif
 
 
@@ -25,7 +25,8 @@ OBJECTS = modform_cc.o \
 	  identify-fields.o \
 	  hecke-polynomial.o \
 	  modp_basis.o \
-	  weight1.o
+	  weight1.o \
+	  cat-binary-format.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
