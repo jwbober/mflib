@@ -281,10 +281,6 @@ void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
             }
         }
         int x = nmod_mat_solve(Tn, smallbasis, transformed_basis);
-        //cout << x << endl;
-        //nmod_mat_print_pretty(smallbasis);
-        //nmod_mat_print_pretty(transformed_basis);
-        cout << n << " ";
         //nmod_mat_print_pretty(Tn);
         for(int a = 0; a <= 2*n; a++) {
             for(int k = 0; k < dim; k++) {
@@ -302,7 +298,6 @@ void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
             a = p - a;
         }
         n++;
-        cout << endl;
     }
 
     nmod_mat_clear(Tn);
@@ -462,19 +457,10 @@ const vector<int>& cuspforms_modp::newspace_basis_data(bool coprime_only) {
         nmod_mat_entry(basis, k, k) = trace_TnTm(n, n);
         nmod_mat_t topleft;
         nmod_mat_window_init(topleft, basis, 0, 0, k + 1, k + 1);
-        //cout << endl;
-        //for(int i = 0; i < nmod_mat_nrows(topleft); i++) {
-        //    for(int j = 0; j < nmod_mat_ncols(topleft); j++) {
-        //        cout << nmod_mat_entry(topleft, i, j) << " ";
-        //    }
-        //    cout << endl;
-        //}
-        //cout << endl;
         if(nmod_mat_det(topleft) != 0) {
             k++;
             basis_rows_ptr->push_back(n);
         }
-        //cout << nmod_mat_rank(topleft) << " " << k << " " << n << endl;
         n++;
         nmod_mat_window_clear(topleft);
     }
@@ -495,9 +481,7 @@ void cuspforms_modp::compute_traces(int end) {
     long one_over_two = nmod_inv(2, modp);
 
     long A1 = nmod_mul(psi_table[level], one_over_twelve, modp);
-    //cout << A1 << endl;
     A1 = nmod_mul(A1, weight - 1, modp);
-    //cout << A1 << endl;
     int z = (int)sqrt(start);                               //
     while(z*z < start) z++;                                 // A1 is only nonzero when n is a square,
     for( ; z*z < end; z++) {                                // and in the weight 2 case it hardly
@@ -508,10 +492,7 @@ void cuspforms_modp::compute_traces(int end) {
         a = nmod_mul(a, A1, modp);
         NMOD_ADDMUL(traces[z*z], a, chi_values[z % level], modp); // traces[z*z] += A1 * chi(z) mod p
     }
-    //cout << "After A1: trace(T1) = " << traces[1] << endl;
-    //cout << "After A1: trace(T2) = " << traces[2] << endl;
     // computation of A2
-    //cout << "computing A2 for level " << level << endl;
 
     long print_interval = 0;
     if(verbose > 1) { 
@@ -591,9 +572,6 @@ void cuspforms_modp::compute_traces(int end) {
     delete [] square_divisors;
     delete [] square_divisors_indices;
     if(verbose > 1) { cerr << endl; cerr.flush(); }
-    //cout << traces[1] << endl;
-    //cout << "After A2: trace(T1) = " << traces[1] << endl;
-    //cout << "After A2: trace(T2) = " << traces[2] << endl;
 
     if(verbose > 1) { cerr << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
     for(int d = 1; d*d < end; d++) {
@@ -637,7 +615,6 @@ void cuspforms_modp::compute_traces(int end) {
                         NMOD_ADDMUL(a, phi_table[g], chi_values[y], modp);
                         //a %= p;
 
-                        //cout << "y = " << y << " " << d << " " << n/d << " " << c << " " << level/c << endl;
                     }
                 }
             }
@@ -649,11 +626,6 @@ void cuspforms_modp::compute_traces(int end) {
         }
     }
     if(verbose > 1) { cerr << endl; cerr.flush(); }
-    //cout << traces[1] << endl;
-    //cout << "After A3: trace(T1) = " << traces[1] << endl;
-    //cout << "After A3: trace(T2) = " << traces[2] << endl;
-
-    //cout << "computing A4 for level " << level << endl;
     // computation of A4
     if(chi == 1 && weight == 2) {
         for(int t = 1; t < end; t++) {
@@ -670,8 +642,6 @@ void cuspforms_modp::compute_traces(int end) {
             }
         }
     }
-    //cout << "After A4: trace(T1) = " << traces[1] << endl;
-    //cout << "After A4: trace(T2) = " << traces[2] << endl;
 
     // before sieving, record the dimension of the full space,
     // provided that the dimension hasn't already been set.

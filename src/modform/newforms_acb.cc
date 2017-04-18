@@ -9,6 +9,10 @@
 #include <string>
 #include <cstdlib>
 
+#include "mag.h"
+
+#include "mfformat.h"
+
 using namespace std;
 
 /*
@@ -75,6 +79,12 @@ static cmatrix_t acb_mat_get_zmat(const acb_mat_t in) {
 }
 */
 
+long arb_abs_prec_approx(arb_t x) {
+    if(arb_is_exact(x)) return ARF_PREC_EXACT;
+    double mag_bits = mag_get_d_log2_approx(arb_radref(x));
+    return floor(mag_bits);
+}
+
 int main(int argc, char ** argv) {
     int level;
     int chi_number;
@@ -82,7 +92,7 @@ int main(int argc, char ** argv) {
     int ncoeffs;
 
     if(argc < 7) {
-        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec [verbose]" << endl;
+        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec targetprec[verbose]" << endl;
         return 0;
     }
     init_classnumbers();
@@ -94,8 +104,9 @@ int main(int argc, char ** argv) {
     string outpath(argv[5]);
 
     int prec = atoi(argv[6]);
+    long targetprec = atol(argv[7]);
     int verbose = 0;
-    if(argc > 7) verbose = atoi(argv[7]);
+    if(argc > 8) verbose = atoi(argv[8]);
 
     DirichletGroup G(level, prec);
     if(GCD(level, chi_number) != 1) return 0;
@@ -107,13 +118,15 @@ int main(int argc, char ** argv) {
 
     acb_mat_t newforms;
     int dim = S->new_dimension();
-    cout << "computing a " << dim << " dimensional space." << endl;
+    if(verbose)
+        cout << "computing a " << dim << " dimensional space." << endl;
     if(dim == 0) return 0;
     S->newforms(newforms, ncoeffs);
     acb_t z;
     acb_init(z);
 
-    cout << "verifying multiplicativity." << endl;
+    if(verbose)
+        cout << "verifying multiplicativity." << endl;
 #define newforms(i,j) acb_mat_entry(newforms, i, j)
     for(int k = 0; k < dim; k++) {
         for(int n = 1; n < ncoeffs; n++) {
@@ -152,12 +165,46 @@ int main(int argc, char ** argv) {
                                    + "." + to_string(weight)
                                    + "." + to_string(chi_number)
                                    + "." + to_string(k);
-        
-        cout << "writing data to " << outfilename << endl;
-        FILE * outfile = fopen(outfilename.c_str(), "w");
+        if(verbose)
+            cout << "writing data to " << outfilename << endl;
+        long computed_precision = -ARF_PREC_EXACT;
         for(int j = 1; j < ncoeffs; j++) {
-            fprintacb(outfile, newforms(j,k));
-            fprintf(outfile, "\n");
+            long nx = arb_abs_prec_approx(acb_realref(newforms(j, k)));
+            long ny = arb_abs_prec_approx(acb_imagref(newforms(j, k)));
+            if(abs(nx) == ARF_PREC_EXACT) nx = -nx;
+            if(abs(ny) == ARF_PREC_EXACT) ny = -ny;
+            nx = max(nx, ny);
+            computed_precision = max(computed_precision, nx);
+            //cout << nx << " " << ny << " " << computed_precision << endl;
+        }
+        if(computed_precision > targetprec) {
+            cout << "ohno" << endl;
+            cout << "target precision was " << targetprec << endl;
+            cout << "computed precision was " << computed_precision << endl;
+        }
+        mfheader header;
+        header.version = 3229261;
+        header.level = level;
+        header.weight = weight;
+        header.chi = chi_number;
+        header.orbit = 0;
+        header.j = k;
+        long fileprec = max(targetprec, computed_precision);
+        if(fileprec == -ARF_PREC_EXACT)
+            fileprec = MF_PREC_EXACT;
+        header.prec = fileprec;
+        if(fileprec == MF_PREC_EXACT)
+            header.exponent = 0;
+        else
+            header.exponent = header.prec;
+        header.ncoeffs = ncoeffs - 1;
+        FILE * outfile = fopen(outfilename.c_str(), "w");
+        write_mfheader(outfile, &header);
+        for(int j = 1; j < ncoeffs; j++) {
+            long bytes_written = acb_write_mfcoeff(outfile, &header, newforms(j,k));
+            if(bytes_written == 0) cout << "error: no bytes written." << endl;
+            //fprintacb(outfile, newforms(j,k));
+            //fprintf(outfile, "\n");
             //char * realstring = arb_get_str(acb_realref(newforms(j, k)), prec/3, ARB_STR_NO_RADIUS);
             //char * imagstring = arb_get_str(acb_imagref(newforms(j, k)), prec/3, ARB_STR_NO_RADIUS);
             //cout << "(" << realstring << ", " << imagstring << ")" << endl;

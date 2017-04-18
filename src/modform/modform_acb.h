@@ -71,7 +71,6 @@ public:
         chi = _chi.m;
         level = _chi.parent->q;
         prec = _chi.parent->prec;
-        std::cout << prec << std::endl;
         long primitive_index;
         conductor = _chi.conductor(&primitive_index);
         weight = w;

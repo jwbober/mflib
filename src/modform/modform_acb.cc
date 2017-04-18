@@ -364,17 +364,8 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
             int n = basis_data[k];
             int m = basis_data[j];
             trace_TnTm(z1, n, m);
-            //cout << k << " " << j << " ";
-            //acb_printd(&sqrts[n], 10);
-            //cout << endl;
-            //acb_printd(&sqrts[m], 10);
-            //cout << endl;
             acb_mul(z1, z1, &invsqrts[n], prec);
-            //cout << "here" << endl;
             acb_mul(z1, z1, &invsqrts[m], prec);
-            //cout << n << " " << m << " ";
-            //acb_printd(z1, 10);
-            //cout << endl;
             arb_set(arb_mat_entry(basis, j, k), acb_realref(z1));
             arb_set(arb_mat_entry(basis, k, j), acb_realref(z1));
         }
@@ -382,13 +373,6 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
 
 
     if(verbose) cout << "computed basis matrix" << endl;
-
-    //rmatrix_t rr_basis(dim, dim);
-    //for(int k = 0; k < dim; k++) {
-    //    for(int j = 0; j < dim; j++) {
-    //        rr_basis(k, j) = arb_get_d(arb_mat_entry(basis, k, j));
-    //    }
-    //}
 
     arb_mat_t Tp_basis; // The basis after being acted on by Tp (or a sum of Tp)
     arb_mat_init(Tp_basis, dim, dim);
@@ -417,22 +401,16 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
                 acb_mul(z1, z1, &invsqrts[n], prec);
                 acb_mul(z1, z1, &invsqrts[m], prec);
                 acb_mul(z1, z1, &invsqrts[p], prec);
-                //cout << n << " " << m << " ";
-                //acb_printd(z1, 10);
-                //cout << endl;
                 arb_add(arb_mat_entry(Tp_basis, j, k), arb_mat_entry(Tp_basis, j, k), acb_realref(z1), prec);
                 if(j != k)
                     arb_add(arb_mat_entry(Tp_basis, k, j), arb_mat_entry(Tp_basis, k, j), acb_realref(z1), prec);
             }
         }
-        //for(int k = 0; k < dim; k++) {
-        //    for(int j = 0; j < dim; j++) {
-        //        rr_Tp_basis(k, j) = arb_get_d(arb_mat_entry(Tp_basis, k, j));
-        //    }
-        //}
 
-        arb_mat_printd(Tp_basis, 10);
-        cout << endl;
+        if(verbose)
+            arb_mat_printd(Tp_basis, 10);
+        if(verbose)
+            cout << endl;
 
         int result = arb_mat_generalized_eigenproblem_symmetric_positive_definite(eigenvalues, eigenvectors, Tp_basis, basis, prec);
 
@@ -449,13 +427,6 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
             cout << endl;
         }
 
-        //cout << has_unique_entries(eigenvalues) << endl;
-
-        //if(result) {
-        //    cerr << "ohno" << endl;
-        //    exit(1);
-        //}
-        //if(has_unique_entries(eigenvalues)) {
         if(result == 0) {
             for(int j = 0; j < dim; j++) {
                 for(int k = 0; k < dim; k++) {
@@ -473,18 +444,6 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
                 cout << "using more Hecke operators to get unique eigenvalues. next p = " << p << endl;
             }
         }
-        //Eigen::GeneralizedSelfAdjointEigenSolver<rmatrix_t> es(rr_Tp_basis, rr_basis);
-        //if(has_unique_entries(es.eigenvalues().data(), es.eigenvalues().size())) {
-        //    auto ev = es.eigenvectors();
-        //    cout << ev << endl;
-            //for(int j = 0; j < dim; j++) {
-            //    for(int k = 0; k < dim; k++) {
-            //        acb_set_d(acb_mat_entry(basis_transformation, j, k), ev(j, k));
-            //        acb_mul(acb_mat_entry(basis_transformation, j, k), acb_mat_entry(basis_transformation, j, k), &sqrts[basis_data[j]], prec);
-            //    }
-            //}
-        //    found_unique_eigenvalues = true;
-        //}
 
     }
 
@@ -498,11 +457,6 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     acb_mat_clear(out);
     newspace_basis(out, ncoeffs);
     acb_mat_mul(out, out, basis_transformation, prec);
-
-    //acb_mat_printd(out, 10);
-    //cout << endl;
-    //acb_mat_printd(basis_transformation, 10);
-    //cout << endl;
 }
 
 const vector<int>& cuspforms_acb::newspace_basis_data() {

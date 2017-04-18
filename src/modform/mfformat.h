@@ -71,4 +71,42 @@ static void acb_set_mfcoeff(acb_t out, fmpz_t x, fmpz_t y, struct mfheader * hea
     }
 }
 
+static size_t acb_write_mfcoeff(FILE * outfile, struct mfheader * header, acb_t coeff) {
+    fmpz_t x;
+    fmpz_t y;
+    acb_t z;
+
+    fmpz_init(x);
+    fmpz_init(y);
+    acb_init(z);
+
+    size_t retval = 0;
+
+    acb_mul_2exp_si(z, coeff, -header->exponent);
+    if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
+        arb_floor(acb_realref(z), acb_realref(z), -header->prec + 500);
+        if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
+            goto cleanup;
+        }
+    }
+
+    if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
+        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + 500);
+        if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
+            goto cleanup;
+        }
+    }
+
+    retval += fmpz_out_raw(outfile, x);
+    if(header->chi != 1)
+        retval += fmpz_out_raw(outfile, y);
+
+cleanup:
+    fmpz_clear(x);
+    fmpz_clear(y);
+    acb_clear(z);
+
+    return retval;
+}
+
 #endif
