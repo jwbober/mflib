@@ -341,7 +341,12 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     compute_traces(ncoeffs * basis_data[dim-1]);
     if(verbose) cout << "finished initial computation of traces" << endl;
 
-    int sqrt_lim = std::max(100, basis_data[dim - 1] + 1);
+    int sqrt_lim = std::max(1000, basis_data[dim - 1] + 1); // XXX. This is a potential problem.
+                                                            // There is no reason that p in the
+                                                            // !found_unique_eigenvalues loop could
+                                                            // not get much bigger. (But N will have
+                                                            // go get really large for that to happen,
+                                                            // probably.
     acb_ptr invsqrts = _acb_vec_init(sqrt_lim);
     acb_set_ui(&invsqrts[1], 1u);
     for(int p = 2; p < sqrt_lim; p = next_prime(p)) {
