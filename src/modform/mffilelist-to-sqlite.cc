@@ -5,11 +5,12 @@
 #include <cstdio>
 
 #include "mfformat.h"
+#include "slint.h"
 
 using namespace std;
 
 
-int insert_v2file_into_sqlite(sqlite3 * db, string filename) {
+int insert_mffile_into_sqlite(sqlite3 * db, string filename) {
     // expect a database with a table modforms
     // CREATE TABLE modforms (level INTEGER, weight INTEGER, chi INTEGER, orbit INTEGER, j INTEGER,
     //      prec INTEGER, exponent INTEGER, ncoeffs INTEGER, coefficients BLOB)
@@ -22,19 +23,45 @@ int insert_v2file_into_sqlite(sqlite3 * db, string filename) {
     struct mfheader header;
     read_mfheader(infile, &header);
 
-    if(header.version != MFV2) {
-        return SQLITE_ERROR;
+    char * coeffdata;
+    size_t datasize;
+
+    if(header.version == MFV2) {
+        size_t filepos = ftell(infile);
+        datasize = filesize - filepos;
+        coeffdata = (char *)malloc(datasize);
+        size_t bytes_read = fread((void *)coeffdata, 1, datasize, infile);
+        fclose(infile);
+        if(bytes_read != datasize) {
+            cout << "ohno";
+            return SQLITE_ERROR;
+        }
     }
+    else if(header.version == MFV1) {
+        FILE * coeff_pseudofile = open_memstream(&coeffdata, &datasize);
 
-    size_t filepos = ftell(infile);
-    size_t datasize = filesize - filepos;
-
-    char * coeffdata = (char *)malloc(datasize);
-    size_t bytes_read = fread((void *)coeffdata, 1, datasize, infile);
-    fclose(infile);
-    if(bytes_read != datasize) {
-        cout << "ohno";
-        return 0;
+        fmpz_t x;
+        fmpz_t y;
+        fmpz_init(x);
+        fmpz_init(y);
+        int k = 0;
+        int p = prime_powers_table[k];
+        for(int j = 0; j < header.ncoeffs; j++) {
+            fmpz_inp_raw(x, infile);
+            if(header.chi != 1) fmpz_inp_raw(y, infile);
+            if(j + 1 == p) {
+                fmpz_out_raw(coeff_pseudofile, x);
+                if(header.chi != 1) fmpz_out_raw(coeff_pseudofile, y);
+                k = k + 1;
+                p = prime_powers_table[k];
+            }
+        }
+        fclose(coeff_pseudofile);
+        fclose(infile);
+    }
+    else {
+        cerr << filename << " not recognized file type." << endl;
+        return SQLITE_ERROR;
     }
 
     sqlite3_stmt * stmt;
@@ -74,7 +101,7 @@ int main(int argc, char ** argv) {
         //    sqlite3_exec(db, "END TRANSACTION", NULL, 0, NULL);
         //    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, 0, NULL);
         //}
-        if(insert_v2file_into_sqlite(db, filename) != SQLITE_DONE) {
+        if(insert_mffile_into_sqlite(db, filename) != SQLITE_DONE) {
             cout << "error inserting data." << endl;
             return 1;
         }

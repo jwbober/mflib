@@ -8,8 +8,10 @@ using namespace std;
 int count = 0;
 
 int callback(struct mfheader * header, int coeff_datasize, const void * coeff_data, acb_ptr coeffs) {
-    cout << count << " " << header->level << " " << header->weight << " " << header->chi << " " << header->j << " ";
+    cout << header->level << " " << header->weight << " " << header->chi << " " << header->j << " ";
     acb_printd(coeffs+18, 10);
+    cout << " ";
+    acb_printd(coeffs+19, 10);
     cout << endl;
     count++;
     return 0;
