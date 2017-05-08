@@ -96,6 +96,7 @@ int main(int argc, char ** argv) {
         return 0;
     }
     init_classnumbers();
+    load_factor_table();
 
     level = atoi(argv[1]);
     weight = atoi(argv[2]);
@@ -159,14 +160,19 @@ int main(int argc, char ** argv) {
                                + "/" + to_string(weight);
     string command = "mkdir -p " + fulloutpath;
     system(command.c_str());
+
+    string outfilename = fulloutpath + "/"
+                           + to_string(level)
+                           + "." + to_string(weight)
+                           + "." + to_string(chi_number)
+                           + ".mfdb";
+
+    sqlite3 * db;
+    sqlite3_open(outfilename.c_str(), &db);
+    sqlite3_exec(db, "CREATE TABLE modforms (level INTEGER, weight INTEGER, chi INTEGER, orbit INTEGER, j INTEGER, prec INTEGER, exponent INTEGER, ncoeffs INTEGER, coefficients BLOB)", NULL, 0, NULL);
+    sqlite3_exec(db, "BEGIN TRANSACTION", NULL, 0, NULL);
+
     for(int k = 0; k < dim; k++) {
-        string outfilename = fulloutpath + "/" 
-                                   + to_string(level)
-                                   + "." + to_string(weight)
-                                   + "." + to_string(chi_number)
-                                   + "." + to_string(k);
-        if(verbose)
-            cout << "writing data to " << outfilename << endl;
         long computed_precision = -ARF_PREC_EXACT;
         for(int j = 1; j < ncoeffs; j++) {
             long nx = arb_abs_prec_approx(acb_realref(newforms(j, k)));
@@ -175,7 +181,6 @@ int main(int argc, char ** argv) {
             if(abs(ny) == ARF_PREC_EXACT) ny = -ny;
             nx = max(nx, ny);
             computed_precision = max(computed_precision, nx);
-            //cout << nx << " " << ny << " " << computed_precision << endl;
         }
         if(computed_precision > targetprec) {
             cout << "ohno" << endl;
@@ -183,7 +188,7 @@ int main(int argc, char ** argv) {
             cout << "computed precision was " << computed_precision << endl;
         }
         mfheader header;
-        header.version = 3229261;
+        header.version = MFV2;
         header.level = level;
         header.weight = weight;
         header.chi = chi_number;
@@ -198,40 +203,40 @@ int main(int argc, char ** argv) {
         else
             header.exponent = header.prec;
         header.ncoeffs = ncoeffs - 1;
-        FILE * outfile = fopen(outfilename.c_str(), "w");
-        write_mfheader(outfile, &header);
-        for(int j = 1; j < ncoeffs; j++) {
-            long bytes_written = acb_write_mfcoeff(outfile, &header, newforms(j,k));
+
+        char * coeffblob;
+        size_t coeffsize;
+        FILE * coeff_psuedofile = open_memstream(&coeffblob, &coeffsize);
+
+        int j = 0;
+        int pp = prime_powers_table[j];
+        while(pp <= header.ncoeffs) {
+            long bytes_written = acb_write_mfcoeff(coeff_psuedofile, &header, newforms(pp,k));
             if(bytes_written == 0) cout << "error: no bytes written." << endl;
-            //fprintacb(outfile, newforms(j,k));
-            //fprintf(outfile, "\n");
-            //char * realstring = arb_get_str(acb_realref(newforms(j, k)), prec/3, ARB_STR_NO_RADIUS);
-            //char * imagstring = arb_get_str(acb_imagref(newforms(j, k)), prec/3, ARB_STR_NO_RADIUS);
-            //cout << "(" << realstring << ", " << imagstring << ")" << endl;
-            //free(realstring);
-            //free(imagstring);
+            j++;
+            pp = prime_powers_table[j];
         }
-        fclose(outfile);
-    }
-    //acb_mat_printd(newforms, 10);
-    //cout << endl;
-    //cmatrix_t newforms1 = acb_mat_get_zmat(newforms);
-    //newforms2.transposeInPlace();
+        fclose(coeff_psuedofile);
 
-    /*
-    for(int k = 0; k < ncoeffs; k++) {
-        complex<double> S = 0;
-        for(int j = 0; j < dim; j++) {
-            S = S + newforms1(k, j) - newforms2(k, j);
-        }
-        cout << k << " " << abs(S) << endl;
-    }
-    */
+        sqlite3_stmt * stmt;
+        string sql = "INSERT INTO modforms (level, weight, chi, orbit, j, prec, exponent, ncoeffs, coefficients) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    //cout << endl;
-    //acb_mat_printz(newforms);
-    //cout << endl;
-    //cout << newforms2 << endl;
+        sqlite3_prepare_v2(db, sql.c_str(), sql.size(), &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, header.level);
+        sqlite3_bind_int(stmt, 2, header.weight);
+        sqlite3_bind_int(stmt, 3, header.chi);
+        sqlite3_bind_int(stmt, 4, header.orbit);
+        sqlite3_bind_int(stmt, 5, header.j);
+        sqlite3_bind_int(stmt, 6, header.prec);
+        sqlite3_bind_int(stmt, 7, header.exponent);
+        sqlite3_bind_int(stmt, 8, header.ncoeffs);
+        sqlite3_bind_blob(stmt, 9, (void *)coeffblob, coeffsize, free);
+
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+    }
+
+    sqlite3_exec(db, "END TRANSACTION", NULL, 0, NULL);
 
 #undef newforms
     return 0;

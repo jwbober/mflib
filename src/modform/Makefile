@@ -5,9 +5,9 @@ INCLUDE = $(ROOT)/include
 CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -Wno-sign-compare -DUSE_ARB -Wno-unused-function
 CFLAGS = -O2 -g -I/home/bober/include/flint -Wall
 ifdef STATIC_LIB_DIR
-    LDLIBS = -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a -lstdc++ -lm
+    LDLIBS = -lsqlite3 -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a -lstdc++ -lm
 else
-    LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl -lpthread -lstdc++ -lm
+    LDLIBS = -L$(HOME)/lib -lfftw3 -lflint -larb -lgmp -lntl -lpthread -lstdc++ -lm -lsqlite3
 endif
 
 
@@ -27,7 +27,11 @@ OBJECTS = modform_cc.o \
 	  modp_basis.o \
 	  weight1.o \
 	  cat-binary-format.o \
-	  print-mftextfile.o
+	  print-mftextfile.o \
+	  mfformat.o \
+	  mffilelist-to-sqlite.o \
+	  print-mfdb.o \
+	  export-mfdb.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
@@ -41,7 +45,11 @@ EXECUTABLES = modp_newbasis \
 	      weight1 \
 	      convert-to-binary \
 	      cat-binary-format \
-	      print-mftextfile
+	      print-mftextfile \
+	      mfv1tov2 \
+	      mffilelist-to-sqlite \
+	      print-mfdb \
+	      export-mfdb
 
 all: $(EXECUTABLES)
 
@@ -60,14 +68,19 @@ modp_basis: modform_modp.o modp_basis.o classnumbers.o
 modp_trace: modform_modp.o modp_trace.o classnumbers.o
 weight1: modform_modp.o weight1.o classnumbers.o
 newforms: newforms.o modform_cc.o modform_modp.o classnumbers.o
-newforms_acb: arb_extras.o newforms_acb.o modform_acb.o modform_modp.o classnumbers.o modform_cc.o
+newforms_acb: arb_extras.o newforms_acb.o modform_acb.o modform_modp.o classnumbers.o modform_cc.o mfformat.o
 modp_newforms: modp_newforms.o modform_modp.o classnumbers.o
 print-traces: print-traces.o modform_cc.o modform_modp.o classnumbers.o
 identify-fields: identify-fields.o
 hecke-polynomial: modform_modp.o hecke-polynomial.o classnumbers.o
 modform_acb.o: modform_acb.h
-cat-binary-format.o: mfformat.h
-convert-to-binary: mfformat.h
+cat-binary-format: mfformat.h mfformat.o
+convert-to-binary: mfformat.h mfformat.o
+mfv1tov2: mfformat.h mfformat.o
+mffilelist-to-sqlite: mfformat.h mfformat.o
+print-mfdb: mfformat.h mfformat.o
+export-mfdb: mfformat.h mfformat.o
+
 
 clean:
 	-rm $(OBJECTS)

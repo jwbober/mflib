@@ -13,11 +13,21 @@ using std::FILE;
 #endif
 
 #include "acb.h"
+#include "sqlite3.h"
 
-const long MF_PREC_EXACT = 2147483647;
+#ifdef __cplusplus
+#define MF_PREC_EXACT 2147483647
+#define MFV2 3294797
+#define MFV1 3229261
+extern "C" {
+#else
+const int MF_PREC_EXACT = 2147483647;
+const int MFV2 = 3294797;
+const int MFV1 = 3229261;
+#endif
 
 struct mfheader {
-    uint32_t version; // == 3229261 (ascii string "MF1\0")
+    uint32_t version; // == MFV1 or MFV2
     uint32_t level;
     uint32_t weight;
     uint32_t chi;
@@ -29,84 +39,56 @@ struct mfheader {
     char reserved[92];
 }; // For a grand total of 128 bytes, since that is a nice round number.
 
-static int write_mfheader(FILE * outfile, struct mfheader * header) {
-    if(!fwrite((char*)&header->version, sizeof(header->version), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->weight, sizeof(header->weight), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->chi, sizeof(header->chi), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->orbit, sizeof(header->orbit), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->j, sizeof(header->j), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->prec, sizeof(header->prec), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->exponent, sizeof(header->exponent), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->ncoeffs, sizeof(header->ncoeffs), 1, outfile)) return 0;
-    if(!fwrite((char*)&header->reserved, sizeof(header->reserved), 1, outfile)) return 0;
-    return 1;
-}
+int write_mfheader(FILE * outfile, struct mfheader * header);       // read or write an mfheader.
+int read_mfheader(FILE * outfile, struct mfheader * header);        // return 0 on failue, 1 on success.
+                                                                    // NOTE: when 0 is returned, some bytes
+                                                                    // might have been read from the file.
 
-static int read_mfheader(FILE * outfile, struct mfheader * header) {
-    if(!fread((char*)&header->version, sizeof(header->version), 1, outfile)) return 0;
-    if(header->version != 3229261) return 0;
-    if(!fread((char*)&header->level, sizeof(header->level), 1, outfile)) return 0;
-    if(!fread((char*)&header->weight, sizeof(header->weight), 1, outfile)) return 0;
-    if(!fread((char*)&header->chi, sizeof(header->chi), 1, outfile)) return 0;
-    if(!fread((char*)&header->orbit, sizeof(header->orbit), 1, outfile)) return 0;
-    if(!fread((char*)&header->j, sizeof(header->j), 1, outfile)) return 0;
-    if(!fread((char*)&header->prec, sizeof(header->prec), 1, outfile)) return 0;
-    if(!fread((char*)&header->exponent, sizeof(header->exponent), 1, outfile)) return 0;
-    if(!fread((char*)&header->ncoeffs, sizeof(header->ncoeffs), 1, outfile)) return 0;
-    if(!fread((char*)&header->reserved, sizeof(header->reserved), 1, outfile)) return 0;
-    return 1;
-}
+void acb_set_mfcoeff(acb_t out, fmpz_t x, fmpz_t y, struct mfheader * header);  // Set out to the acb_t represented
+                                                                                // by x and y, according to the
+                                                                                // precision and exponent in header.
 
-static void acb_set_mfcoeff(acb_t out, fmpz_t x, fmpz_t y, struct mfheader * header) {
-    acb_set_fmpz_fmpz(out, x, y);
-    acb_mul_2exp_si(out, out, header->exponent);
-    if(header->prec != MF_PREC_EXACT) {
-        mag_set_ui(arb_radref(acb_realref(out)), 1);
-        mag_mul_2exp_si(arb_radref(acb_realref(out)), arb_radref(acb_realref(out)), header->prec);
-        if(header->chi != 1) {
-            mag_set_ui(arb_radref(acb_imagref(out)), 1);
-            mag_mul_2exp_si(arb_radref(acb_imagref(out)), arb_radref(acb_imagref(out)), header->prec);
-        }
-    }
-}
+size_t acb_write_mfcoeff(FILE * outfile, struct mfheader * header, acb_t coeff);
+    // write one or two fmpz_ts to outfile (dependin on whether or not chi is trivial)
+    // representing coeff, according to precision and exponent in header. Return number
+    // of bytes written. (Can fail if coeff is not precise enough, or possibly because
+    // of other flakiness. For example, it is probably not possible currently to call acb_write_mfcoeff
+    // on a coefficient that was read with acb_read_mfcoeff.)
+    //
+    // Doesn't handle failure in the case where one cal to fmpz_out_raw succeeds and the next fails,
+    // and maybe doesn't handle other failure well. (If fmpz_out_raw returns nonzero, does that mean
+    // it succeeded?)
 
-static size_t acb_write_mfcoeff(FILE * outfile, struct mfheader * header, acb_t coeff) {
-    fmpz_t x;
-    fmpz_t y;
-    acb_t z;
+int read_mffile(FILE * infile, struct mfheader * header, acb_ptr * coeffs);
+    // populate header and *coeffs with data from infile.
+    // on return, *header will have header->ncoeffs entries and should subsequently
+    // be freed with _acb_vec_free(*coeffs, header->ncoeffs);
 
-    fmpz_init(x);
-    fmpz_init(y);
-    acb_init(z);
+int write_mffile(FILE * outfile, struct mfheader * header, acb_ptr coeffs);
+    // write mffile to outfile. expects header->version == MFV2, and otherwise
+    // will return 0.
+    // Returns 0 on failure, 1 on success. (Like with other functions, failure does
+    // not mean that 0 bytes have been written.)
 
-    size_t retval = 0;
+int read_mfdata(FILE * infile, struct mfheader * header, acb_ptr * coeffs);
+    // like read_mffile, but doesn't read the header.
 
-    acb_mul_2exp_si(z, coeff, -header->exponent);
-    if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
-        arb_floor(acb_realref(z), acb_realref(z), -header->prec + 500);
-        if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
-            goto cleanup;
-        }
-    }
+int write_mfdata(FILE * outfile, struct mfheader * header, acb_ptr coeffs);
+    // like write_mffile, but doesn't write the header
 
-    if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
-        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + 500);
-        if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
-            goto cleanup;
-        }
-    }
+int insert_into_sqlite(sqlite3 * db, struct mfheader * header, acb_ptr coeffs);
 
-    retval += fmpz_out_raw(outfile, x);
-    if(header->chi != 1)
-        retval += fmpz_out_raw(outfile, y);
+void iterate_through_sqlitefile(
+        const char * filename,
+        int (*callback)(struct mfheader * header, int coeff_datasize, const void * coeff_data, acb_ptr coeffs),
+        int populate_coefficients);
+    // go through the entire sqlite database filename, and for each entry populate header and coeffs and then call callback()
+    // the callback() should NOT free the coeffcients or the header
+    // If callback() ever returns nonzero, we stop the iteration.
+    // If populate_coefficients is nonzero, we convert the raw coefficient data and store it in coeffs, otherwise we just give the raw data (which is useful for writing out files, for example)
 
-cleanup:
-    fmpz_clear(x);
-    fmpz_clear(y);
-    acb_clear(z);
-
-    return retval;
-}
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif

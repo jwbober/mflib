@@ -3,7 +3,7 @@
 #include "acb.h"
 
 #include "mfformat.h"
-
+/*
 int main(int argc, char ** argv) {
     FILE * infile = fopen(argv[1], "r");
 
@@ -36,4 +36,25 @@ int main(int argc, char ** argv) {
 
     fmpz_clear(x);
     fmpz_clear(y);
+}
+*/
+
+int main(int argc, char ** argv) {
+    FILE * infile = fopen(argv[1], "r");
+
+    struct mfheader header;
+    acb_ptr coeffs;
+    if(!read_mffile(infile, &header, &coeffs)) {
+        printf("problem reading input file.\n");
+        return 0;
+    }
+
+    printf("%d.%d.%d.%d.%d\n", header.level, header.weight, header.chi, header.orbit, header.j);
+    for(unsigned int k = 0; k < header.ncoeffs; k++) {
+        printf("%d ", k + 1);
+        acb_printd(coeffs + k, 20);
+        printf("\n");
+    }
+
+    _acb_vec_clear(coeffs, header.ncoeffs);
 }

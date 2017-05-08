@@ -71,3 +71,16 @@ arb_test
 hecke-polynomial
 hecke-polynomials
 cat-binary-format
+export-mfdb
+convert-to-binary
+mf_filelist
+mffilelist-to-sqlite
+mfv1tov2
+build-factor-table
+factor-table
+*.mfdb
+print-mfdb
+print-mftextfile
+modp_basis
+tmp
+todo
