@@ -15,7 +15,9 @@ int main(int argc, char ** argv) {
     if(pos != string::npos) {
         string outpath = outfilename.substr(0, pos + 1);
         string command = "mkdir -p " + outpath;
-        system(command.c_str());
+        if(system(command.c_str()) != 0) {
+            cerr << "error creating output directory. continuing, but don't expect much." << endl;
+        }
     }
 
     FILE * outfile = fopen(argv[2], "w");

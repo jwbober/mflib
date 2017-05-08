@@ -3,6 +3,10 @@
 #include <string>
 #include <cstdlib>
 
+#ifdef USE_ARB
+#undef USE_ARB
+#endif
+
 #define USE_ARB
 #include "characters.h"
 
@@ -242,8 +246,6 @@ int main(int argc, char ** argv) {
                                 finished = true;
                             }
                         }
-                        int single_orbit_dimension = nroots/orbit.size();
-                        int k = 0;
                         for(int k = 0; k < factors.length(); k++) {
                             for(int l = 0; l < nroots; l++) {
                                 if(root_to_polynomial[l] == k) cout << labels[l] << " ";

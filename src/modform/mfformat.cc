@@ -160,7 +160,7 @@ int read_mfdata(FILE * infile, struct mfheader * header, acb_ptr * coeffs) {
 }
 
 int read_mfdatablob(const void * data, int datasize, struct mfheader * header, acb_ptr * coeffs) {
-    FILE * f = fmemopen(data, datasize, "r");
+    FILE * f = fmemopen((void *)data, datasize, "r");
     read_mfdata(f, header, coeffs);
     fclose(f);
     return 1;

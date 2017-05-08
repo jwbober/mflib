@@ -2,8 +2,8 @@ CC = gcc
 CXX = g++
 ROOT = ../..
 INCLUDE = $(ROOT)/include
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -Wno-sign-compare -DUSE_ARB -Wno-unused-function
-CFLAGS = -O2 -g -I/home/bober/include/flint -Wall
+CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -isystem /usr/include/eigen3 -fpermissive -Wall -Wno-sign-compare -DUSE_ARB -Wno-unused-function -fdiagnostics-color=auto
+CFLAGS = -O2 -g -I/home/bober/include/flint -Wall -fdiagnostics-color=auto
 ifdef STATIC_LIB_DIR
     LDLIBS = -lsqlite3 -lpthread -lfftw3 $(STATIC_LIB_DIR)/libarb.a $(STATIC_LIB_DIR)/libflint.a $(STATIC_LIB_DIR)/libntl.a $(STATIC_LIB_DIR)/libmpfr.a $(STATIC_LIB_DIR)/libgmp.a -lstdc++ -lm
 else

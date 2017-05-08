@@ -159,7 +159,9 @@ int main(int argc, char ** argv) {
     string fulloutpath = outpath + "/" + to_string(level)
                                + "/" + to_string(weight);
     string command = "mkdir -p " + fulloutpath;
-    system(command.c_str());
+    if(system(command.c_str()) != 0) {
+        cerr << "error creating output directory. continuing, but don't expect much." << endl;
+    }
 
     string outfilename = fulloutpath + "/"
                            + to_string(level)

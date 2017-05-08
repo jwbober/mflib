@@ -536,7 +536,8 @@ int main(int argc, char ** argv) {
         nmod_mat_t basis_transformation;
         nmod_mat_t basis;
         cuspforms_modp * S3;
-        int dimension = weight1_basis_data(basis_transformation, &S3, level, chi, p, 20, verbose);
+        //int dimension = weight1_basis_data(basis_transformation, &S3, level, chi, p, 20, verbose);
+        weight1_basis_data(basis_transformation, &S3, level, chi, p, 20, verbose);
         weight1_basis(basis, basis_transformation, S3, p, ncoeffs, verbose);
     }
     else {

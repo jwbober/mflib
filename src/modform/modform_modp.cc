@@ -280,7 +280,7 @@ void cuspforms_modp::newforms(nmod_mat_t forms, int ncoeffs) {
                 }
             }
         }
-        int x = nmod_mat_solve(Tn, smallbasis, transformed_basis);
+        nmod_mat_solve(Tn, smallbasis, transformed_basis);
         //nmod_mat_print_pretty(Tn);
         for(int a = 0; a <= 2*n; a++) {
             for(int k = 0; k < dim; k++) {

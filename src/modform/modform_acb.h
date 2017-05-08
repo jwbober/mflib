@@ -1,5 +1,12 @@
 #ifndef __MODFORM_ACB_H__
 #define __MODFORM_ACB_H__
+
+// to suppress warnings about redefinition.
+// (USE_ARB could be better named, like, _CHARACTERS_H_USE_ARB_...)
+#ifdef USE_ARB
+#undef USE_ARB
+#endif
+
 #define USE_ARB
 
 #include <vector>
