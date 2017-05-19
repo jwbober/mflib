@@ -31,7 +31,8 @@ OBJECTS = modform_cc.o \
 	  mfformat.o \
 	  mffilelist-to-sqlite.o \
 	  print-mfdb.o \
-	  export-mfdb.o
+	  export-mfdb.o \
+	  newform-dimension.o
 
 EXECUTABLES = modp_newbasis \
 	      modp_trace \
@@ -49,7 +50,8 @@ EXECUTABLES = modp_newbasis \
 	      mfv1tov2 \
 	      mffilelist-to-sqlite \
 	      print-mfdb \
-	      export-mfdb
+	      export-mfdb \
+	      newform-dimension
 
 all: $(EXECUTABLES)
 
@@ -80,6 +82,8 @@ mfv1tov2: mfformat.h mfformat.o
 mffilelist-to-sqlite: mfformat.h mfformat.o
 print-mfdb: mfformat.h mfformat.o
 export-mfdb: mfformat.h mfformat.o
+newform-dimension: newform-dimension.o arb_extras.o modform_acb.o modform_modp.o classnumbers.o modform_cc.o mfformat.o
+
 
 
 clean:

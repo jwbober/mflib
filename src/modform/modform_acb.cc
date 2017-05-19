@@ -61,6 +61,13 @@ cuspforms_acb * get_cuspforms_acb(DirichletCharacter &chi, int weight, int verbo
     return S;
 }
 
+void clear_cuspform_cache() {
+    for(auto S : cache) {
+        delete S.second;
+    }
+    cache.clear();
+}
+
 
 static bool has_unique_entries(const complex<double> * zz, int length, double eps = 1e-7) {
     complex<double> * z = new complex<double>[length];
@@ -474,6 +481,7 @@ const vector<int>& cuspforms_acb::newspace_basis_data() {
 
 void cuspforms_acb::compute_traces(int end) {
     // TODO
+    if(verbose) cout << "cuspforms_acb: compute_traces called with end == " << end << endl;
 
     if(end < traces_computed) return;
     for(cuspforms_acb *subspace : subspaces) {

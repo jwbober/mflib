@@ -26,6 +26,7 @@
 
 class cuspforms_acb;
 cuspforms_acb * get_cuspforms_acb(DirichletCharacter &chi, int weight, int verbose = 0);
+void clear_cuspform_cache();
 
 class cuspforms_acb {
 public:
@@ -97,7 +98,7 @@ public:
             }
         }
 
-        modp_space = get_cuspforms_modp(_chi, weight, 10000000l);
+        modp_space = get_cuspforms_modp(_chi, weight, 10000000l, verbose);
 
         chi_values = new acb_t[level + 1];
         for(int k = 0; k <= level; k++) {
