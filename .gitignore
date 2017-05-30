@@ -45,7 +45,6 @@ fields*
 output*
 identify-fields
 *commands*
-*precisions*
 cat-textfile
 modp-newforms
 filelist*
@@ -84,3 +83,6 @@ print-mftextfile
 modp_basis
 tmp
 todo
+.d
+bin
+libmodform.a

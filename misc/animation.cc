@@ -236,7 +236,7 @@ public:
     }
 };
 
-void pause() {
+void pause_animation() {
     SDL_Event e;
     bool paused = true;
     while(paused) {
@@ -321,7 +321,7 @@ int main(int argc, char ** argv) {
                             update_delay = max(update_delay, 1);
                             break;
                         case SDLK_SPACE:
-                            pause();
+                            pause_animation();
                             break;
                         case SDLK_q:
                             quit = true;

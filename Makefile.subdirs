@@ -1,0 +1,44 @@
+CSOURCES = $(wildcard *.c)
+CCSOURCES = $(wildcard *.cc)
+COBJECTS = $(CSOURCES:.c=.o)
+CCOBJECTS = $(CCSOURCES:.cc=.o)
+MOD_OBJ = ../$(MOD_DIR).a
+
+#lib: $(MOD_OBJ)
+lib: $(COBJECTS) $(CCOBJECTS)
+
+DEPDIR := .d
+$(shell mkdir -p $(DEPDIR) >/dev/null)
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+
+CC=gcc
+
+QUIET_CXX  = @echo '   ' CXX  ' ' $@;
+QUIET_CC  = @echo '   ' CC  ' ' $@;
+COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
+
+#$(MOD_OBJ): $(COBJECTS) $(CCOBJECTS)
+#	ar rcs $(MOD_OBJ) $(COBJECTS) $(CCOBJECTS)
+
+%.o : %.cc
+%.o : %.cc $(DEPDIR)/%.d
+	$(QUIET_CXX) $(COMPILE.cc) $<
+	$(POSTCOMPILE)
+
+%.o : %.c
+%.o : %.c $(DEPDIR)/%.d
+	$(QUIET_CC) $(COMPILE.c) $<
+	$(POSTCOMPILE)
+
+clean:
+	rm -f $(COBJECTS)
+	rm -f $(CCOBJECTS)
+	rm -f $(MOD_OBJ)
+
+$(DEPDIR)/%.d: ;
+.PRECIOUS: $(DEPDIR)/%.d
+
+include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(CSOURCES))))
+include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(CCSOURCES))))
