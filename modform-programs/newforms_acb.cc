@@ -114,6 +114,13 @@ int main(int argc, char ** argv) {
             nx = max(nx, ny);
             computed_precision = max(computed_precision, nx);
         }
+
+        if(computed_precision > 0) {
+            cerr << "error: We don't have enough precision, so aborting." << endl;
+            sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
+            return 1;
+        }
+
         if(verbose && (computed_precision > targetprec)) {
             cout << "ohno" << endl;
             cout << "target precision was " << targetprec << endl;
@@ -138,6 +145,11 @@ int main(int argc, char ** argv) {
 
         int precision_ok = 1;
         do {
+            if(header.prec != MF_PREC_EXACT && header.prec > 0) {
+                cerr << "error: We don't have enough precision, so aborting." << endl;
+                sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
+                return 1;
+            }
             precision_ok = 1;
             int j = 0;
             int pp = prime_powers_table[j];
@@ -147,8 +159,9 @@ int main(int argc, char ** argv) {
                 if(!ok_to_round) {
                     precision_ok = 0;
                     if(header.prec == MF_PREC_EXACT) {
-                        cerr << "precision should be exact but we are having trouble rounding." << endl;
+                        cerr << "error: precision should be exact but we are having trouble rounding." << endl;
                         cerr << "This should not happen. Quitting." << endl;
+                        sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
                         return 1;
                     }
                     header.prec++;
@@ -174,7 +187,7 @@ int main(int argc, char ** argv) {
             long bytes_written = acb_write_mfcoeff(coeff_psuedofile, &header, newforms(pp,k));
             if(bytes_written == 0) {
                 cerr << "error: no bytes written." << endl;
-                sqlite3_exec(db, "BEGIN TRANSACTION", NULL, 0, NULL);
+                sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
                 return 1;
             }
             j++;
