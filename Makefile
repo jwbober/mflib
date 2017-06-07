@@ -41,3 +41,4 @@ link:
 	ln -f -s $(realpath $(wildcard *.h)) $(PREFIX)/include/
 	ln -f -s $(realpath $(MODFORM_BINARIES)) $(PREFIX)/bin/
 	ln -f -s $(realpath $(CHARACTER_BINARIES)) $(PREFIX)/bin/
+	ln -f -s $(realpath libmodform.a) $(PREFIX)/lib
