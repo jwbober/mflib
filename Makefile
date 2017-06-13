@@ -8,7 +8,7 @@ PREFIX=$(HOME)
 export CXXFLAGS CFLAGS
 
 INCLUDES = $(wildcard *.h)
-MODFORM_BINARIES = bin/modp_newbasis bin/newform-dimension bin/newforms_acb bin/hecke-polynomials bin/print-mfdb bin/export-mfdb
+MODFORM_BINARIES = bin/modp_newbasis bin/newform-dimension bin/newforms_acb bin/hecke-polynomials bin/print-mfdb bin/export-mfdb bin/read-single-mfdb-entry
 CHARACTER_BINARIES = bin/character-info bin/chimaxsum
 MF_DIRS = classnumbers arb-extras cuspforms_acb mfformat cuspforms_modp
 

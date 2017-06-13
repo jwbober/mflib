@@ -296,6 +296,43 @@ void iterate_through_sqlitefile(
         }
         if(callback_result == 0) result = sqlite3_step(stmt);
     }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
+
+int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int level, int weight, int chi, int j) {
+    string sql = "SELECT level, weight, chi, orbit, j, prec, exponent, ncoeffs, coefficients FROM modforms "
+                    "WHERE level=? and weight=? and chi=? and j=? LIMIT 1";
+    sqlite3_stmt * stmt;
+    int result = sqlite3_prepare_v2(db, sql.c_str(), sql.size(), &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, level);
+    sqlite3_bind_int(stmt, 2, weight);
+    sqlite3_bind_int(stmt, 3, chi);
+    sqlite3_bind_int(stmt, 4, j);
+
+    result = sqlite3_step(stmt);
+    if(result != SQLITE_ROW) {
+        return 0;
+    }
+    header->level = sqlite3_column_int(stmt, 0);
+    header->weight = sqlite3_column_int(stmt, 1);
+    header->chi = sqlite3_column_int(stmt, 2);
+    header->orbit = sqlite3_column_int(stmt, 3);
+    header->j = sqlite3_column_int(stmt, 4);
+    header->prec = sqlite3_column_int(stmt, 5);
+    header->exponent = sqlite3_column_int(stmt, 6);
+    header->ncoeffs = sqlite3_column_int(stmt, 7);
+
+    const void * coeff_data = sqlite3_column_blob(stmt, 8);
+    size_t coeff_datasize = sqlite3_column_bytes(stmt, 8);
+
+    header->version = MFV2;
+    read_mfdatablob(coeff_data, coeff_datasize, header, coeffs);
+
+    sqlite3_finalize(stmt);
+    return 1;
 }
 
 
