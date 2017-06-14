@@ -384,9 +384,87 @@ int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * 
     *orbit = (int*)malloc(*orbitsize * sizeof(int));
     memcpy( *orbit, sqlite3_column_blob(stmt, 1), *orbitsize * sizeof(int) );
 
+    sqlite3_finalize(stmt);
+
     return 1;
 
 }
+
+int polydb_get_entries(sqlite3 * db,
+                        fmpz_poly_t ** polys,
+                        int * npolys,
+                        int * an,
+                        int ** chiorbit,
+                        int * chiorbitsize,
+                        int level,
+                        int weight,
+                        int chi) {
+    const char * count_sql = "SELECT count(*) from heckepolys WHERE "
+                             "level=? and weight=? and chi=?";
+
+    const char * query_sql = "SELECT an, orbit, polynomial, j from heckepolys WHERE "
+                             "level=? and weight=? and chi=?";
+
+    sqlite3_stmt * stmt;
+    int result = sqlite3_prepare_v2(db, count_sql, -1, &stmt, NULL);
+    if(result != SQLITE_OK) {
+        cerr << "ohno" << endl;
+        exit(1);
+    }
+    sqlite3_bind_int(stmt, 1, level);
+    sqlite3_bind_int(stmt, 2, weight);
+    sqlite3_bind_int(stmt, 3, chi);
+
+    result = sqlite3_step(stmt);
+    if(result != SQLITE_ROW) {
+        cout << result << endl;
+        return 0;
+    }
+
+    int count = sqlite3_column_int(stmt, 0);
+
+    *npolys = count;
+    sqlite3_finalize(stmt);
+
+    *polys = (fmpz_poly_t*)malloc(count * sizeof(fmpz_poly_t));
+    for(int k = 0; k < count; k++) {
+        fmpz_poly_init((*polys)[k]);
+    }
+
+    if(count != 0) {
+        sqlite3_prepare_v2(db, query_sql, -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, level);
+        sqlite3_bind_int(stmt, 2, weight);
+        sqlite3_bind_int(stmt, 3, chi);
+
+        result = sqlite3_step(stmt);
+        bool first = true;
+        while(result == SQLITE_ROW) {
+            if(first) {
+                *an = sqlite3_column_int(stmt, 0);
+                *chiorbitsize = sqlite3_column_bytes(stmt, 1)/sizeof(int);
+                *chiorbit = (int*)malloc(*chiorbitsize * sizeof(int));
+                memcpy( *chiorbit, sqlite3_column_blob(stmt, 1), *chiorbitsize * sizeof(int) );
+                first = false;
+            }
+            int j = sqlite3_column_int(stmt, 3);
+
+            size_t polysize = sqlite3_column_bytes(stmt, 2);
+            const void * polydata = sqlite3_column_blob(stmt, 2);
+
+            fmpz_poly_read_raw((*polys)[j-1], polydata, polysize);
+            result = sqlite3_step(stmt);
+        }
+        sqlite3_finalize(stmt);
+    }
+
+
+
+    return count;
+
+}
+
+
 
 
 } // extern "C"

@@ -97,6 +97,8 @@ int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int
 
 int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * orbitsize, int level, int weight, int chi, int j);
 
+int polydb_get_entries(sqlite3 * db, fmpz_poly_t** f, int * npolys, int * an, int ** chiorbit, int * chiorbitsize, int level, int weight, int chi);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
