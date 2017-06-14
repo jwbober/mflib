@@ -3,8 +3,10 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 
 #include "mfformat.h"
+#include "flint/fmpz_poly.h"
 #include "slint.h"
 
 #include "sqlite3.h"
@@ -333,6 +335,57 @@ int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int
 
     sqlite3_finalize(stmt);
     return 1;
+}
+
+static void fmpz_poly_read_raw(fmpz_poly_t f, const void * data, size_t datasize) {
+    FILE * pseudofile = fmemopen( (void *)data, datasize, "r");
+    slong degree;
+    fread((void*)&degree, sizeof(degree), 1, pseudofile);
+    fmpz_t x;
+    fmpz_init(x);
+    fmpz_poly_zero(f);
+    for(int k = degree; k >= 0; k--) {
+        fmpz_inp_raw(x, pseudofile);
+        fmpz_poly_set_coeff_fmpz(f, k, x);
+    }
+    fmpz_clear(x);
+    fclose(pseudofile);
+}
+
+int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * orbitsize, int level, int weight, int chi, int j) {
+    const char * query_sql = "SELECT an, orbit, polynomial from heckepolys WHERE "
+                             "level=? and weight=? and chi=? and j=?";
+
+    sqlite3_stmt * stmt;
+    int result = sqlite3_prepare_v2(db, query_sql, -1, &stmt, NULL);
+    if(result != SQLITE_OK) {
+        cerr << "ohno" << endl;
+        exit(1);
+    }
+    sqlite3_bind_int(stmt, 1, level);
+    sqlite3_bind_int(stmt, 2, weight);
+    sqlite3_bind_int(stmt, 3, chi);
+    sqlite3_bind_int(stmt, 4, j);
+
+    result = sqlite3_step(stmt);
+    if(result != SQLITE_ROW) {
+        cout << result << endl;
+        return 0;
+    }
+
+    size_t polysize = sqlite3_column_bytes(stmt, 2);
+    const void * polydata = sqlite3_column_blob(stmt, 2);
+
+    fmpz_poly_read_raw(f, polydata, polysize);
+
+    *an = sqlite3_column_int(stmt, 0);
+
+    *orbitsize = sqlite3_column_bytes(stmt, 1)/sizeof(int);
+    *orbit = (int*)malloc(*orbitsize * sizeof(int));
+    memcpy( *orbit, sqlite3_column_blob(stmt, 1), *orbitsize * sizeof(int) );
+
+    return 1;
+
 }
 
 

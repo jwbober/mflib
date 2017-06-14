@@ -13,6 +13,7 @@ using std::FILE;
 #endif
 
 #include "acb.h"
+#include "flint/fmpz_poly.h"
 #include "sqlite3.h"
 
 #ifdef __cplusplus
@@ -93,6 +94,8 @@ void iterate_through_sqlitefile(
     // If populate_coefficients is nonzero, we convert the raw coefficient data and store it in coeffs, otherwise we just give the raw data (which is useful for writing out files, for example)
 
 int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int level, int weight, int chi, int j);
+
+int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * orbitsize, int level, int weight, int chi, int j);
 
 #ifdef __cplusplus
 } // extern "C"
