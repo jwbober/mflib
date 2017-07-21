@@ -25,6 +25,8 @@ int main2(int argc, char ** argv) {
     init_classnumbers();
     load_factor_table();
 
+    long total_dimension = 0;
+
     for(int level = level1; level <= level2; level++) {
         DirichletGroup G(level, prec);
         for(int weight = weight1; weight <= weight2; weight++) {
@@ -34,6 +36,7 @@ int main2(int argc, char ** argv) {
                 if(chi.is_even() && weight % 2 == 1) continue;
                 if(!chi.is_even() && weight % 2 == 0) continue;
                 int dimension = get_cuspforms_acb(chi, weight)->new_dimension();
+                total_dimension += dimension;
                 if(dimension != 0)
                     cout << level << " " << weight << " " << n << " " << dimension << endl;
             }
@@ -43,6 +46,8 @@ int main2(int argc, char ** argv) {
             clear_cuspforms_modp();
         }
     }
+
+    cout << total_dimension << endl;
 
     return 0;
 }
