@@ -80,10 +80,14 @@ void cuspforms_modp::compute_traces(int end) {
     // computation of A2
 
     long print_interval = 0;
-    if(verbose > 1) { 
-        cerr << "level " << level << endl;
-        cerr << "start = " << start << " end = " << end << endl;
-        cerr << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l); }
+    if(verbose > 1) {
+        cerr << "cuspforms_modp: level " << level << endl;
+        cerr << "cuspforms_modp: start = " << start << " end = " << end << endl;
+    }
+    if(start == end) return;
+    if(verbose > 1) {
+        cerr << "cuspforms_modp: A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l);
+    }
 
     int * square_divisors = new int[ (int)(4*end*.83 + 11) ];   // To avoid repeated factorizations in the following loop,
     int * square_divisors_indices = new int[4*end + 1];         // we create some arrays such that for each D == 0 or 3 mod 4,
@@ -158,7 +162,7 @@ void cuspforms_modp::compute_traces(int end) {
     delete [] square_divisors_indices;
     if(verbose > 1) { cerr << endl; cerr.flush(); }
 
-    if(verbose > 1) { cerr << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
+    if(verbose > 1) { cerr << "cuspforms_modp: A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }
     for(int d = 1; d*d < end; d++) {
         if(verbose > 1 && d % print_interval == 0) {
             cerr << '.';

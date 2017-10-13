@@ -53,13 +53,14 @@ static void square_divisors_mod03(int D, int * divisors, int& k) {
 }
 
 void cuspforms_acb::compute_traces(int end) {
-    if(verbose) cout << "cuspforms_acb: compute_traces called with end == " << end << endl;
-
     if(end < traces_computed) return;
     for(cuspforms_acb *subspace : subspaces) {
         subspace->compute_traces(end);
     }
     int start = traces_computed;
+    if(verbose) cout << "cuspforms_acb: level " << level << endl;
+    if(verbose) cout << "cuspforms_acb: start = " << start << " end = " << end << endl;
+    if(start == end) return;
     if(end > traces_size) {
         if(verbose > 1) cout << "resizing" << endl;
         acb_t * new_traces = new acb_t[end];
@@ -74,6 +75,15 @@ void cuspforms_acb::compute_traces(int end) {
         traces = new_traces;
         traces_size = end;
         if(verbose > 1) cout << "resized" << endl;
+    }
+
+    if(end > 2) {
+        if(new_dimension() == 0) {
+            for(int k = start; k < end; k++) {
+                acb_zero(traces[k]);
+            }
+            return;
+        }
     }
 
     arb_t t1; arb_init(t1);
