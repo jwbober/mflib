@@ -88,10 +88,20 @@ void iterate_through_sqlitefile(
         const char * filename,
         int (*callback)(struct mfheader * header, int coeff_datasize, const void * coeff_data, acb_ptr coeffs),
         int populate_coefficients);
+
+void iterate_through_sqlitefile_with_filter(
+        const char * filename,
+        int (*callback)(struct mfheader * header, int coeff_datasize, const void * coeff_data, acb_ptr coeffs),
+        int populate_coefficients,
+        int level,
+        int weight,
+        int chi);
     // go through the entire sqlite database filename, and for each entry populate header and coeffs and then call callback()
     // the callback() should NOT free the coeffcients or the header
     // If callback() ever returns nonzero, we stop the iteration.
     // If populate_coefficients is nonzero, we convert the raw coefficient data and store it in coeffs, otherwise we just give the raw data (which is useful for writing out files, for example)
+    //
+    // In the with_filter version, for each nonzero value level, weight, chi, we modify the query to only return matching forms
 
 int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int level, int weight, int chi, int j);
 
