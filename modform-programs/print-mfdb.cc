@@ -36,17 +36,31 @@ int main(int argc, char ** argv) {
 
     if(argc < 2) {
         cout << "Usage:" << endl
-             << "./print-mfdb filename [start] [end]" << endl;
+             << "./print-mfdb filename [level] [weight] [chi] [start] [end]" << endl;
         return 0;
     }
+    
+    int level = 0;
+    int weight = 0;
+    int chi = 0;
 
     if(argc > 2) {
-        print_start = atoi(argv[2]);
+        level = atoi(argv[2]);
     }
     if(argc > 3) {
-        print_end = atoi(argv[3]);
+        weight = atoi(argv[3]);
+    }
+    if(argc > 4) {
+        chi = atoi(argv[4]);
     }
 
-    iterate_through_sqlitefile(argv[1], callback, 1);
+    if(argc > 5) {
+        print_start = atoi(argv[5]);
+    }
+    if(argc > 6) {
+        print_end = atoi(argv[6]);
+    }
+
+    iterate_through_sqlitefile_with_filter(argv[1], callback, 1, level, weight, chi);
     return 0;
 }
