@@ -395,7 +395,7 @@ public:
         }
         if(m >= q_odd)
             m %= q_odd;
-        if(n >= q_odd);
+        if(n >= q_odd)
             n %= q_odd;
         if(q_odd > 1) {
             if(A[m][0] == -1 || A[n][0] == -1)
@@ -519,7 +519,7 @@ public:
 
         if(m >= q_odd)
             m %= q_odd;
-        if(n >= q_odd);
+        if(n >= q_odd)
             n %= q_odd;
         if(q_odd > 1) {
             if(A[m][0] == -1 || A[n][0] == -1)
