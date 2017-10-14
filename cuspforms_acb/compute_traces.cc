@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 #include "classnumbers.h"
 #include "cuspforms_acb.h"
@@ -112,7 +113,7 @@ void cuspforms_acb::compute_traces(int end) {
     arb_clear(npow);
 
     long print_interval = 0;
-    if(verbose > 0) { cout << "A2:"; print_interval = round(2 * sqrt(4*end)/70); print_interval = std::max(print_interval, 1l); }
+    if(verbose > 0) { cout << "A2:"; print_interval = round(2 * sqrt(4*end)/70)/nthreads; print_interval = std::max(print_interval, 1l); }
 
     int * square_divisors = new int[ (int)(4*end*.83 + 11) ];   // To avoid repeated factorizations in the following loop,
     int * square_divisors_indices = new int[4*end + 1];         // we create some arrays such that for each D == 0 or 3 mod 4,
@@ -128,80 +129,109 @@ void cuspforms_acb::compute_traces(int end) {
                                     // the last iteration.
     }
 
-    int t = sqrt(4*end);
-    if(t*t == 4*end) t--;
-    fmpz_t polyterm;
-    fmpz_init(polyterm);
-    for(t = -t; (long)t*t < 4l*end; t++) {
-        if(verbose > 0 && t % print_interval == 0)  {
-            cout << '.';
-            cout.flush();
-        }
+    int tstart = sqrt(4*end);
+    if(tstart*tstart == 4*end) tstart--;
+    tstart = -tstart;
 
-        for(long x = 0; x < level; x++) {
-            //complex<double> chi_value = chi_values[x];
-            //if(chi_value == 0.0) continue;
-            if(GCD(x, level) != 1) continue;
-            // These values of x and t will contribute to those n for
-            // which the level divides x^2 - tx + n.
-            int starting_n = std::max(start, t*t/4 + 1);
-            if((x*x - t*x + starting_n) % level != 0) {
-                starting_n += (level - (x*x - t*x + starting_n) % level);
-            }
-            for(int n = starting_n; n < end; n += level) {
-                // Now for this (t,n,x) we will add a term to traces[n]
-                // for each f such that f*f divides (t^2 - 4n) AND
-                // gcd(f, N) * N divides x*x - t*x + n
-                //
-                // So we find the square divisors of t^2 - 4n that we've
-                // already found
-                int D = 4*n - t*t;
-                int k = square_divisors_indices[D];
-                int f = square_divisors[k];
-                fmpz_t tt = {t};
-                fmpz_t nn = {n};
-                evalpoly(polyterm, tt, nn);
-                do {
-                    int g;
-                    if(f == 1) {
-                        g = 1;
-                    }
-                    else if(f < level) {
-                        g = gcd_tables[level][f];
-                    }
-                    else {
-                        g = gcd_tables[level][f % level];
-                    }
-                    if(g == 1 || ((long)x*x - t*x + n) % (g * level) == 0) {
-                        arb_set_si(t1, psi_table[level]);
-                        arb_div_si(t1, t1, psi_table[level/g], prec);
-                        arb_mul_si(t1, t1, classnumbers[D/(f*f)], prec);
-
-                        if(D/(f*f) == 3) arb_div_si(t1, t1, 3, prec);
-                        if(D/(f*f) == 4) arb_div_si(t1, t1, 2, prec);
-                        arb_div_si(t1, t1, 2, prec);
-                        arb_mul_fmpz(t1, t1, polyterm, prec);
-                        //complex<double> z = (complex<double>)(psi_table[level]/psi_table[level/g]);
-                        acb_mul_arb(s1, chi_values[x], t1, prec);
-                        acb_sub(traces[n], traces[n], s1, prec);
-                        //z *= chi_value;
-                        //z *= classnumbers[D/(f*f)];
-                        //z /= 2.0;
-                        //z *= polyterm;
-                        //traces[n] -= z;
-                        //z = nmod_mul(z, one_over_two, modp);
-                        //traces[n] = nmod_sub(traces[n], z, modp);
-                    }
-                    k++;
-                    f = square_divisors[k];
-                } while(f != 1);
-            }
+    acb_ptr thread_contribution[nthreads];
+    if(nthreads == 1) {
+        thread_contribution[0] = &traces[start][0];
+    }
+    else {
+        for(int j = 0; j < nthreads; j++) {
+            thread_contribution[j] = _acb_vec_init(end - start);
         }
     }
-    fmpz_clear(polyterm);
+
+    auto A2thread_function = [start, end, tstart, square_divisors, square_divisors_indices, this, print_interval, &thread_contribution](int threadid) {
+        arb_t t1; arb_init(t1);
+        acb_t s1; acb_init(s1);
+        fmpz_t polyterm;
+        fmpz_init(polyterm);
+        for(int t = tstart + threadid; (long)t*t < 4l*end; t += nthreads) {
+            if(threadid == 0 && verbose > 0 && t % print_interval == 0)  {
+                cout << '.';
+                cout.flush();
+            }
+
+            for(long x = 0; x < level; x++) {
+                if(GCD(x, level) != 1) continue;
+                // These values of x and t will contribute to those n for
+                // which the level divides x^2 - tx + n.
+                int starting_n = std::max(start, t*t/4 + 1);
+                if((x*x - t*x + starting_n) % level != 0) {
+                    starting_n += (level - (x*x - t*x + starting_n) % level);
+                }
+                for(int n = starting_n; n < end; n += level) {
+                    // Now for this (t,n,x) we will add a term to traces[n]
+                    // for each f such that f*f divides (t^2 - 4n) AND
+                    // gcd(f, N) * N divides x*x - t*x + n
+                    //
+                    // So we find the square divisors of t^2 - 4n that we've
+                    // already found
+                    int D = 4*n - t*t;
+                    int k = square_divisors_indices[D];
+                    int f = square_divisors[k];
+                    fmpz_t tt = {t};
+                    fmpz_t nn = {n};
+                    evalpoly(polyterm, tt, nn);
+                    do {
+                        int g;
+                        if(f == 1) {
+                            g = 1;
+                        }
+                        else if(f < level) {
+                            g = gcd_tables[level][f];
+                        }
+                        else {
+                            g = gcd_tables[level][f % level];
+                        }
+                        if(g == 1 || ((long)x*x - t*x + n) % (g * level) == 0) {
+                            arb_set_si(t1, psi_table[level]);
+                            arb_div_si(t1, t1, psi_table[level/g], prec);
+                            arb_mul_si(t1, t1, classnumbers[D/(f*f)], prec);
+
+                            if(D/(f*f) == 3) arb_div_si(t1, t1, 3, prec);
+                            if(D/(f*f) == 4) arb_div_si(t1, t1, 2, prec);
+                            arb_div_si(t1, t1, 2, prec);
+                            arb_mul_fmpz(t1, t1, polyterm, prec);
+                            acb_mul_arb(s1, chi_values[x], t1, prec);
+                            //acb_sub(traces[n], traces[n], s1, prec);
+                            acb_sub(thread_contribution[threadid] + n - start, thread_contribution[threadid] + n - start, s1, prec);
+                        }
+                        k++;
+                        f = square_divisors[k];
+                    } while(f != 1);
+                }
+            }
+        }
+        arb_clear(t1);
+        acb_clear(s1);
+        fmpz_clear(polyterm);
+    };
+
+    std::thread threads[nthreads];
+    for(int j = 0; j < nthreads; j++) {
+        threads[j] = std::thread(A2thread_function, j);
+    }
+    for(int j = 0; j < nthreads; j++) {
+        threads[j].join();
+    }
+    if(nthreads != 1) {
+        for(int n = start; n < end; n++) {
+            for(int j = 0; j < nthreads; j++) {
+                acb_add(traces[n], traces[n], thread_contribution[j] + n - start, prec);
+            }
+        }
+        for(int j = 0; j < nthreads; j++) {
+            _acb_vec_clear(thread_contribution[j], end - start);
+        }
+    }
+
     delete [] square_divisors;
     delete [] square_divisors_indices;
     if(verbose > 0) { cout << endl; cout.flush(); }
+
     //cout << traces[1] << endl;
 
     if(verbose > 0) { cout << "A3:"; print_interval = (long)std::max(round(sqrt(end)/70), 1.0); }

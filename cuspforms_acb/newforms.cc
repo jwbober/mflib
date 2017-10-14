@@ -151,4 +151,3 @@ void cuspforms_acb::newforms(acb_mat_t out, int ncoeffs) {
     newspace_basis(out, ncoeffs);
     acb_mat_mul(out, out, basis_transformation, prec);
 }
-

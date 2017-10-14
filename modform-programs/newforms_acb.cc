@@ -27,7 +27,7 @@ int main(int argc, char ** argv) {
     int ncoeffs;
 
     if(argc < 7) {
-        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec targetprec[verbose]" << endl;
+        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec targetprec [nthreads] [verbose]" << endl;
         return 0;
     }
     init_classnumbers();
@@ -41,8 +41,10 @@ int main(int argc, char ** argv) {
 
     int prec = atoi(argv[6]);
     long targetprec = atol(argv[7]);
+    int nthreads = 1;
+    if(argc > 8) nthreads = atoi(argv[8]);
     int verbose = 0;
-    if(argc > 8) verbose = atoi(argv[8]);
+    if(argc > 9) verbose = atoi(argv[8]);
 
     DirichletGroup G(level, prec);
     if(GCD(level, chi_number) != 1) return 0;
@@ -50,7 +52,7 @@ int main(int argc, char ** argv) {
     if(chi.is_even() && weight % 2 == 1) return 0;
     if(!chi.is_even() && weight % 2 == 0) return 0;
 
-    cuspforms_acb * S = get_cuspforms_acb(chi, weight, verbose);
+    cuspforms_acb * S = get_cuspforms_acb(chi, weight, nthreads, verbose);
 
     acb_mat_t newforms;
     int dim = S->new_dimension();
@@ -116,7 +118,7 @@ int main(int argc, char ** argv) {
         }
 
         if(computed_precision > 0) {
-            cerr << "error: We don't have enough precision, so aborting." << endl;
+            cerr << "error1: We don't have enough precision, so aborting." << endl;
             sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
             return 1;
         }
@@ -146,7 +148,8 @@ int main(int argc, char ** argv) {
         int precision_ok = 1;
         do {
             if(header.prec != MF_PREC_EXACT && header.prec > 0) {
-                cerr << "error: We don't have enough precision, so aborting." << endl;
+                cerr << "error2: We don't have enough precision, so aborting." << endl;
+                cerr << "precision was " << header.prec << endl;
                 sqlite3_exec(db, "ROLLBACK TRANSACTION", NULL, 0, NULL);
                 return 1;
             }

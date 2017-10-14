@@ -11,7 +11,8 @@ static long psi(int N) {
     return PSI;
 }
 
-cuspforms_acb::cuspforms_acb(DirichletCharacter &_chi, const int w, int _verbose) {
+cuspforms_acb::cuspforms_acb(DirichletCharacter &_chi, const int w, int _nthreads, int _verbose) {
+    nthreads = _nthreads;
     verbose = _verbose;
     chi = _chi.m;
     level = _chi.parent->q;
@@ -59,7 +60,7 @@ cuspforms_acb::cuspforms_acb(DirichletCharacter &_chi, const int w, int _verbose
             sublevels.push_back(M);
             DirichletGroup G(M, prec);
             DirichletCharacter psi = G.character(G.index_from_primitive_character(conductor, primitive_index));
-            cuspforms_acb * S2 = get_cuspforms_acb(psi, weight, verbose);
+            cuspforms_acb * S2 = get_cuspforms_acb(psi, weight, nthreads, verbose);
             subspaces.push_back(S2);
         }
     }

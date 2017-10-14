@@ -19,7 +19,7 @@
 #include "acb_mat.h"
 
 class cuspforms_acb;
-cuspforms_acb * get_cuspforms_acb(DirichletCharacter &chi, int weight, int verbose = 0);
+cuspforms_acb * get_cuspforms_acb(DirichletCharacter &chi, int weight, int nthreads = 1, int verbose = 0);
 void clear_cuspform_cache();
 
 class cuspforms_acb {
@@ -28,6 +28,7 @@ public:
     int weight;
     int chi;
     int conductor;
+    int nthreads;
     int verbose;
 
     std::vector<int> sublevels;
@@ -68,7 +69,7 @@ public:
 
     void evalpoly(fmpz_t out, fmpz_t t, fmpz_t n);
 
-    cuspforms_acb(DirichletCharacter &_chi, const int w, int _verbose = 0);
+    cuspforms_acb(DirichletCharacter &_chi, const int w, int _nthreads = 1, int _verbose = 0);
     ~cuspforms_acb();
 };
 

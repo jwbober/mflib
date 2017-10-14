@@ -1,4 +1,4 @@
-CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -I$(CURDIR) -Wall -Wno-sign-compare -DUSE_ARB -fdiagnostics-color=auto -Wno-unused-function -Wno-unused-variable
+CXXFLAGS = -O2 -std=c++11 -g -I/home/bober/include/flint -I$(CURDIR) -Wall -Wno-sign-compare -DUSE_ARB -fdiagnostics-color=auto -Wno-unused-function -Wno-unused-variable -pthread
 CXXFLAGS_NOARB = -O2 -std=c++11 -g -I/home/bober/include/flint -I$(CURDIR) -Wall -Wno-sign-compare -fdiagnostics-color=auto
 CFLAGS = -O2 -g -I/home/bober/include/flint -I$(CURDIR) -Wall -Wno-sign-compare -DUSE_ARB -fdiagnostics-color=auto
 AT=@
