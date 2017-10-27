@@ -1,5 +1,6 @@
 #include <iostream>
 #include <thread>
+#include <cstring>
 
 #include "classnumbers.h"
 #include "cuspforms_acb.h"
@@ -7,6 +8,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::memset;
 
 static void square_divisors_mod03(int D, int * divisors, int& k) {
     // For f0, f1, ..., f_{j-1} such that
@@ -138,8 +140,12 @@ void cuspforms_acb::compute_traces(int end) {
         thread_contribution[0] = &traces[start][0];
     }
     else {
+        if(verbose) cerr << "initializing storage for " << nthreads << " threads." << endl;
         for(int j = 0; j < nthreads; j++) {
-            thread_contribution[j] = _acb_vec_init(end - start);
+            cerr << j << " " << (end - start) * sizeof(acb_struct) << endl;
+            //thread_contribution[j] = _acb_vec_init(end - start);
+            thread_contribution[j] = new acb_struct[end - start];
+            memset(thread_contribution[j], 0, (end - start) * sizeof(acb_struct));
         }
     }
 
@@ -210,6 +216,7 @@ void cuspforms_acb::compute_traces(int end) {
         fmpz_clear(polyterm);
     };
 
+    if(verbose) cerr << "launching " << nthreads << " threads." << endl;
     std::thread threads[nthreads];
     for(int j = 0; j < nthreads; j++) {
         threads[j] = std::thread(A2thread_function, j);
@@ -217,6 +224,7 @@ void cuspforms_acb::compute_traces(int end) {
     for(int j = 0; j < nthreads; j++) {
         threads[j].join();
     }
+    if(verbose) cerr << "Threads finished." << endl;
     if(nthreads != 1) {
         for(int n = start; n < end; n++) {
             for(int j = 0; j < nthreads; j++) {
@@ -224,7 +232,11 @@ void cuspforms_acb::compute_traces(int end) {
             }
         }
         for(int j = 0; j < nthreads; j++) {
-            _acb_vec_clear(thread_contribution[j], end - start);
+            for(int k = 0; k < end - start; k++) {
+                acb_clear(thread_contribution[j] + k);
+            }
+            //_acb_vec_clear(thread_contribution[j], end - start);
+            delete [] thread_contribution[j];
         }
     }
 

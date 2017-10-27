@@ -21,6 +21,7 @@ long arb_abs_prec_approx(arb_t x) {
 }
 
 int main(int argc, char ** argv) {
+    srand(time(NULL));
     int level;
     int chi_number;
     int weight;
@@ -44,7 +45,7 @@ int main(int argc, char ** argv) {
     int nthreads = 1;
     if(argc > 8) nthreads = atoi(argv[8]);
     int verbose = 0;
-    if(argc > 9) verbose = atoi(argv[8]);
+    if(argc > 9) verbose = atoi(argv[9]);
 
     DirichletGroup G(level, prec);
     if(GCD(level, chi_number) != 1) return 0;
