@@ -9,7 +9,7 @@ export CXXFLAGS CFLAGS
 
 INCLUDES = $(wildcard *.h)
 MODFORM_BINARIES = bin/modp_newbasis bin/newform-dimension bin/newforms_acb bin/hecke-polynomials bin/print-mfdb bin/export-mfdb bin/read-single-mfdb-entry bin/read-single-polydb-entry bin/read-polydb-entries
-CHARACTER_BINARIES = bin/character-info bin/chimaxsum
+CHARACTER_BINARIES = bin/character-info bin/chimaxsum bin/dirichletL
 MF_DIRS = classnumbers arb-extras cuspforms_acb mfformat cuspforms_modp
 
 LIBMF_OBJECTS = $(foreach dir, $(MF_DIRS), $(patsubst %.c,%.o,$(wildcard $(dir)/*.c)) $(patsubst %.cc,%.o,$(wildcard $(dir)/*.cc)) )
