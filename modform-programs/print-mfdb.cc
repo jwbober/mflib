@@ -39,7 +39,9 @@ int main(int argc, char ** argv) {
              << "./print-mfdb filename [level] [weight] [chi] [start] [end]" << endl;
         return 0;
     }
-    
+
+    cout.precision(17);
+
     int level = 0;
     int weight = 0;
     int chi = 0;

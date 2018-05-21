@@ -58,6 +58,7 @@ public:
     void compute_traces(int end);
 
     int dimension();
+    long _new_dimension = -1;
     long new_dimension();
 
     void newspace_basis(acb_mat_t B, int ncoeffs);
