@@ -103,7 +103,12 @@ void iterate_through_sqlitefile_with_filter(
     //
     // In the with_filter version, for each nonzero value level, weight, chi, we modify the query to only return matching forms
 
+int mfdb_contents(sqlite3 * db, struct mfheader** headers);
+
 int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int level, int weight, int chi, int j);
+// gets an entry from an mfdb, returning 0 if nothing found
+// this function uses _acb_vec_init to initialize *coeffs,
+// so the caller is responsible for using _acb_vec_clear(*coeffs, header->ncoeffs) to free the memory.
 
 int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * orbitsize, int level, int weight, int chi, int j);
 
