@@ -173,6 +173,7 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
     fmpz_init(modulus);
     fmpz_set_ui(modulus, 1);
 
+
     // we'll start the computation at 2^50
     long p = 1125899906842624;
     do {
@@ -196,14 +197,22 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
             cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
             p = S->p;
             nmod_mat_t hecke_mat;
-            nmod_mat_init(hecke_mat, S->dimension(), S->dimension(), p);
+            nmod_mat_init(hecke_mat, S->new_dimension(), S->new_dimension(), p);
             for(int l = 2; l < hecke_operator.size() + 2; l++) {
+                cout << l << endl;
                 int cl = hecke_operator[l - 2];
+                cout << "here" << endl;
                 if(cl == 0) continue;
                 nmod_mat_t Tl;
+                cout << "here1" << endl;
                 S->hecke_matrix(Tl, l);
+                cout << "here2" << endl;
+                cout << cl << endl;
                 nmod_mat_scalar_mul_add(hecke_mat, hecke_mat, cl, Tl);
+                cout << "here3" << endl;
                 nmod_mat_clear(Tl);
+                cout << "here4" << endl;
+                cout << l << endl;
             }
             nmod_mat_charpoly(f, hecke_mat);
             nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
