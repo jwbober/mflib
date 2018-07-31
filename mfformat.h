@@ -110,9 +110,30 @@ int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int
 // this function uses _acb_vec_init to initialize *coeffs,
 // so the caller is responsible for using _acb_vec_clear(*coeffs, header->ncoeffs) to free the memory.
 
-int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int * an, int ** orbit, int * orbitsize, int level, int weight, int chi, int j);
+int polydb_insert(  sqlite3 * db,
+                    fmpz_poly_t f,
+                    int * hecke_operator,
+                    size_t hecke_operator_size,
+                    int * mforbit,
+                    size_t orbitsize,
+                    int level,
+                    int weight,
+                    int chi,
+                    int whatevernumber,
+                    int labelnumber);
 
-int polydb_get_entries(sqlite3 * db, fmpz_poly_t** f, int * npolys, int * an, int ** chiorbit, int * chiorbitsize, int level, int weight, int chi);
+void polydb_init(sqlite3 * db);
+
+int polydb_get_entry(sqlite3 * db, fmpz_poly_t f, int ** mforbit, size_t * orbitsize, int level, int weight, int chi, int j);
+
+int polydb_get_entries(sqlite3 * db,
+                        fmpz_poly_t ** polys,
+                        int * npolys,
+                        int *** mforbit,
+                        size_t ** mforbitsizes,
+                        int ** whatevernumbers,
+                        int level,
+                        int weight);
 
 #ifdef __cplusplus
 } // extern "C"

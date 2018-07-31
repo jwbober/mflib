@@ -241,6 +241,7 @@ int main(int argc, char ** argv) {
     clock_t start_time = clock();
     long p = 1125899906842679l;
     string mfdbname = argv[1];
+    string polydbname = argv[2];
 
     int level = 0;
     int weight = 0;
@@ -251,6 +252,11 @@ int main(int argc, char ** argv) {
 
     sqlite3 * db;
     sqlite3_open(mfdbname.c_str(), &db);
+
+    sqlite3 * polydb;
+    sqlite3_open(polydbname.c_str(), &polydb);
+    polydb_init(polydb);
+
     mfheader * headers;
     int count = mfdb_contents(db, &headers);
 
@@ -417,26 +423,23 @@ int main(int argc, char ** argv) {
             if(matches[k] == -1) cout << "ohno2" << endl;
         }
 
+        // All went well.
         // Now to just record all the information we just computed...
 
         for(int l = 0; l < nfactors; l++) {
             fmpz_poly_set_ZZX(g, factors[l].a);
             fmpz_poly_print_pretty(g, "x");
+            vector<int> mforbit;
             for(int k = 0; k < full_dimension; k++) {
-                if(matches[k] == l) cout << " " << orbit[k/dimension] << '.' << k % dimension;
+                if(matches[k] == l) {
+                //    cout << " " << orbit[k/dimension] << '.' << k % dimension;
+                    mforbit.push_back(orbit[k/dimension]);
+                    mforbit.push_back(k % dimension);
+                }
             }
+            polydb_insert(polydb, g, hecke_operator.data(), hecke_operator.size(), mforbit.data(), mforbit.size(),
+                    level, weight, orbit[0], l, 0);
             cout << endl;
-            //arb_poly_set_fmpz_poly(arbfactor, g, prec); // TODO: probably need to increase the precision here
-            //for(int k = 0; k < full_dimension; k++) {
-            //    arb_poly_evaluate_acb(t1, arbfactor, eigenvalues + k, prec);
-            //    if(acb_contains_zero(t1)) {
-            //        if(matches[k] != -1) {
-            //            cout << "ohno3" << endl;
-            //            continue;
-            //        }
-            //        matches[k] = l;
-            //    }
-            //}
         }
 
 
