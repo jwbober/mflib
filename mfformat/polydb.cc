@@ -93,13 +93,12 @@ int polydb_get_entries(sqlite3 * db,
     *polys = (fmpz_poly_t*)malloc(count * sizeof(fmpz_poly_t));
     *whatevernumbers = (int *)malloc(count * sizeof(int));
     *mforbits = (int**)malloc(count*sizeof(int*));
-    *mforbitsizes = (size_t*)malloc(count*sizeof(int));
+    *mforbitsizes = (size_t*)malloc(count*sizeof(size_t));
 
     for(int k = 0; k < count; k++) {
         fmpz_poly_init((*polys)[k]);
     }
 
-    cout << count << endl;
     if(count != 0) {
         sqlite3_prepare_v2(db, query_sql, -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, level);
@@ -108,7 +107,6 @@ int polydb_get_entries(sqlite3 * db,
         result = sqlite3_step(stmt);
         int k = 0;
         while(result == SQLITE_ROW) {
-            cout << k << endl;
             (*mforbitsizes)[k] = (size_t)sqlite3_column_bytes(stmt, 0)/sizeof(int);
             (*mforbits)[k] = (int*)malloc((*mforbitsizes)[k]*sizeof(int));
             memcpy((*mforbits)[k], sqlite3_column_blob(stmt, 0), (*mforbitsizes)[k]*sizeof(int));

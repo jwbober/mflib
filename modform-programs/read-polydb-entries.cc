@@ -27,14 +27,13 @@ int main(int argc, char ** argv) {
     if(!result)
         return 0;
 
-    cout  << "here" << endl;
 
     for(int k = 0; k < npolys; k++) {
         cout << whatevernumbers[k] << " ";
-        fmpz_poly_print_pretty(polys[k], "x");
         for(int j = 0; j < mforbitsizes[k]/2; j++) {
-            cout << " " << mforbits[k][2*j] << "." << mforbits[k][2*j+1];
+            cout << mforbits[k][2*j] << "." << mforbits[k][2*j+1] << " ";
         }
+        fmpz_poly_print_pretty(polys[k], "x");
         cout << endl;
     }
     // some things to free. can't be bothered right now.

@@ -11,13 +11,24 @@
 #include <fstream>
 #include <iomanip>
 #include <ctime>
+#include <cstring>
 
 #include "NTL/ZZX.h"
 #include "NTL/ZZXFactoring.h"
 
 #include "acb_poly.h"
 
+#include "arb-extras.h"
+
 using namespace std;
+
+ostream& operator << (ostream& out, fmpz_t in) {
+    char * outstr = fmpz_get_str(NULL, 10, in);
+    out.write(outstr, strlen(outstr));
+    flint_free(outstr);
+    return out;
+}
+
 
 void arb_get_ubound_fmpz(fmpz_t out, arb_t in, slong prec) {
     arf_t t;
@@ -32,6 +43,11 @@ int arb_get_unique_fmpz_modular(fmpz_t out, arb_t real_approx, fmpz_t modular_ap
     // and congruent to modular_approx modulo mod, if such an integer exists.
     //
     // Returns 1 on success, 0 if there is no such integer.
+
+    cout << "Entering arb_get_unique_fmpz_modular()."  << endl;
+    cout << "real_approx = " << real_approx << endl;
+    cout << "modular_approx = " << modular_approx << endl;
+    cout << "mod = " << mod << endl;
 
     fmpz_t a, b, e;
     fmpz_init(a);
@@ -199,20 +215,13 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
             nmod_mat_t hecke_mat;
             nmod_mat_init(hecke_mat, S->new_dimension(), S->new_dimension(), p);
             for(int l = 2; l < hecke_operator.size() + 2; l++) {
-                cout << l << endl;
                 int cl = hecke_operator[l - 2];
-                cout << "here" << endl;
                 if(cl == 0) continue;
                 nmod_mat_t Tl;
-                cout << "here1" << endl;
                 S->hecke_matrix(Tl, l);
-                cout << "here2" << endl;
-                cout << cl << endl;
+                //cout << cl << endl;
                 nmod_mat_scalar_mul_add(hecke_mat, hecke_mat, cl, Tl);
-                cout << "here3" << endl;
                 nmod_mat_clear(Tl);
-                cout << "here4" << endl;
-                cout << l << endl;
             }
             nmod_mat_charpoly(f, hecke_mat);
             nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
@@ -368,12 +377,19 @@ int main(int argc, char ** argv) {
             arb_zero(max_error);
             for(int k = 0; k < full_dimension; k++) {
                 arb_get_rad_arb(r, acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)));
+                //cout << r << " " << acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)) << endl;
+                //arb_printd(r, 10);
+                //cout << endl;
+                //arb_printd(acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)), 10);
+                //cout << endl;
                 if(arb_lt(max_error, r)) {
                     arb_set(max_error, r);
                 }
             }
             fmpz_t modular_precision;
             fmpz_init(modular_precision);
+
+            arb_mul_2exp_si(max_error, max_error, 1);
             arb_get_ubound_fmpz(modular_precision, max_error, prec);
             fmpz_poly_t heckepoly_modular_approx;
             fmpz_poly_init(heckepoly_modular_approx);

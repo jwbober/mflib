@@ -5,6 +5,13 @@
 
 #ifdef __cplusplus
 
+#include <ostream>
+
+std::ostream& operator << (std::ostream& out, mag_t in);
+std::ostream& operator << (std::ostream& out, arf_t in);
+std::ostream& operator << (std::ostream& out, arb_t in);
+std::ostream& operator << (std::ostream& out, acb_t in);
+
 extern "C" {
 #endif
 
