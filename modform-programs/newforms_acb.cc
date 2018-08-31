@@ -161,6 +161,7 @@ int main(int argc, char ** argv) {
             while(pp <= header.ncoeffs) {
                 int ok_to_round = acb_attempt_rounding_mfcoeff(&header, newforms(pp,k));
                 if(!ok_to_round) {
+                    //acb_printd(newforms(pp, k), 10); cout << endl;
                     precision_ok = 0;
                     if(header.prec == MF_PREC_EXACT) {
                         cerr << "error: precision should be exact but we are having trouble rounding." << endl;

@@ -142,7 +142,7 @@ int acb_poly_get_unique_fmpz_poly_modular(fmpz_poly_t out, acb_poly_t real_appro
 
 int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weight, int chi_number, vector<int> hecke_operator, fmpz_t precision) {
     int verbose2 = 0;
-    int verbose = 0;
+    int verbose = 1;
     // compute the characteristic polynomial of the hecke operator sum c_n T_n,
     // where the vector hecke_operator is [c_2, c_3, c_4, ..., c_k], acting on
     // the space
@@ -219,7 +219,6 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
                 if(cl == 0) continue;
                 nmod_mat_t Tl;
                 S->hecke_matrix(Tl, l);
-                //cout << cl << endl;
                 nmod_mat_scalar_mul_add(hecke_mat, hecke_mat, cl, Tl);
                 nmod_mat_clear(Tl);
             }
@@ -240,6 +239,9 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         nmod_poly_clear(hecke_poly_modp);
         clear_cuspforms_modp();
     //} while(!fmpz_poly_equal(hecke1, hecke2));
+        if(verbose) {
+            cout << fmpz_bits(modulus) << " " << fmpz_bits(precision) << endl;
+        }
     } while(fmpz_cmp(modulus, precision) < 0);
 
     fmpz_set(precision, modulus);
@@ -281,7 +283,12 @@ int main(int argc, char ** argv) {
     for(int k = 0; k < count; k++) {
         level = headers[k].level;
         if(!dimensions) {
-            dimensions = new int[level]();
+            if(level == 1)
+                dimensions = new int[level + 1](); // stupid hack because the trivial character mod 1 is 1.1
+                                                   // which is the only case where the character number might
+                                                   // get as large as the level
+            else
+                dimensions = new int[level](); 
         }
         weight = headers[k].weight;
         chi_list.insert(headers[k].chi);
@@ -290,7 +297,7 @@ int main(int argc, char ** argv) {
         //cout << headers[k].level << " " << headers[k].weight << " " << headers[k].chi << " " << headers[k].j << endl;
     }
     if(prec < 0) prec = 200;
-    prec = 3*prec;
+    prec = 30*prec;
     cout << "using working precision " << prec << endl;
     free(headers);
 
@@ -321,6 +328,7 @@ int main(int argc, char ** argv) {
             for(int l = 0; l < orbit.size(); l++) {
                 long chi_number = orbit[l];
                 long chi_inverse = InvMod(chi_number, level);
+                if(level == 1) chi_inverse = 1;
                 for(int j = 0; j < dimension; j++) {
                     if(chi_number <= chi_inverse) {
                         int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);

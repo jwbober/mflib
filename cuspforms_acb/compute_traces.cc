@@ -142,7 +142,7 @@ void cuspforms_acb::compute_traces(int end) {
     else {
         if(verbose) cerr << "initializing storage for " << nthreads << " threads." << endl;
         for(int j = 0; j < nthreads; j++) {
-            cerr << j << " " << (end - start) * sizeof(acb_struct) << endl;
+            //cerr << j << " " << (end - start) * sizeof(acb_struct) << endl;
             //thread_contribution[j] = _acb_vec_init(end - start);
             thread_contribution[j] = new acb_struct[end - start];
             memset(thread_contribution[j], 0, (end - start) * sizeof(acb_struct));

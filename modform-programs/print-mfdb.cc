@@ -25,7 +25,9 @@ int callback(struct mfheader * header, int coeff_datasize, const void * coeff_da
     unsigned int start = max(0u, print_start - 1);
     unsigned int end = min(print_end, header->ncoeffs);
     for(int k = start; k < end; k++) {
-        cout << " " << acb_get_z(coeffs + k);
+        //cout << " " << acb_get_z(coeffs + k);
+        cout << " ";
+        acb_printd(coeffs + k, 100); 
     }
     cout << endl;
     count++;

@@ -69,14 +69,14 @@ size_t acb_write_mfcoeff(FILE * outfile, struct mfheader * header, acb_t coeff) 
 
     acb_mul_2exp_si(z, coeff, -header->exponent);
     if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
-        arb_floor(acb_realref(z), acb_realref(z), -header->prec + 500);
+        arb_floor(acb_realref(z), acb_realref(z), -header->prec + arb_bits(acb_realref(z)));
         if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
             goto cleanup;
         }
     }
 
     if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
-        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + 500);
+        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + arb_bits(acb_imagref(z)));
         if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
             goto cleanup;
         }
@@ -107,7 +107,7 @@ int acb_attempt_rounding_mfcoeff(struct mfheader * header, acb_t coeff) {
 
     acb_mul_2exp_si(z, coeff, -header->exponent);
     if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
-        arb_floor(acb_realref(z), acb_realref(z), -header->prec + 500);
+        arb_floor(acb_realref(z), acb_realref(z), -header->prec + arb_bits(acb_realref(z)));
         if( !arb_get_unique_fmpz(x, acb_realref(z)) ) {
             retval = 0;
             goto cleanup;
@@ -115,7 +115,7 @@ int acb_attempt_rounding_mfcoeff(struct mfheader * header, acb_t coeff) {
     }
 
     if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
-        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + 500);
+        arb_floor(acb_imagref(z), acb_imagref(z), -header->prec + arb_bits(acb_imagref(z)));
         if( !arb_get_unique_fmpz(y, acb_imagref(z)) ) {
             retval = 0;
             goto cleanup;
