@@ -124,7 +124,7 @@ int main(int argc, char ** argv) {
             return 1;
         }
 
-        if(verbose && (computed_precision > targetprec)) {
+        if(computed_precision > targetprec) {
             cout << "ohno" << endl;
             cout << "target precision was " << targetprec << endl;
             cout << "computed precision was " << computed_precision << endl;

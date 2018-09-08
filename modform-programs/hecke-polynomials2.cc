@@ -271,10 +271,16 @@ int main(int argc, char ** argv) {
     int prec = 0;
 
     sqlite3 * db;
-    sqlite3_open(mfdbname.c_str(), &db);
+    if(sqlite3_open(mfdbname.c_str(), &db) != SQLITE_OK) {
+        cout << "ohno error opening input database." << endl;
+        return 1;
+    }
 
     sqlite3 * polydb;
-    sqlite3_open(polydbname.c_str(), &polydb);
+    if(sqlite3_open(polydbname.c_str(), &polydb) != SQLITE_OK) {
+        cout << "ohno error opening output database." << endl;
+        return 1;
+    }
     polydb_init(polydb);
 
     mfheader * headers;
