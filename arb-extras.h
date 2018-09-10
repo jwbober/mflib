@@ -27,6 +27,9 @@ void fprintarf(FILE *fp, const arf_t x);
 
 void acb_reasonable_sqrt(acb_t out, const acb_t in, slong prec);
 
+int arb_poly_gcd(arb_poly_t res,const arb_poly_t a,const arb_poly_t b,slong d, slong prec);
+int arb_poly_sign_change(arb_poly_t f,arb_srcptr x,slong prec); // sgn(f(a)*f(b)), where x=[a,b]
+
 #ifdef __cplusplus
 }
 #endif
