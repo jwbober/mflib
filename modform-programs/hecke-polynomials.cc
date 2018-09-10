@@ -17,6 +17,22 @@
 
 using namespace std;
 
+const char * usage =
+" level weight chi p [verbose]\n"
+"\n"
+"Compute the splitting of S_weight^new (level, chi) into Galois orbits over QQ.\n"
+"The first line of the output is the level, weight, and then a list of\n"
+"characters in this Galois orbit. The second line is an integer n which indicates\n"
+"that we are going to print the characteristic polynomials of\n"
+"T_2 + T_3 + T_4 + ... + Tn and the third line is a list of integers giving the\n"
+"dimensions of the Galois orbits. (The degrees of the fields of coefficients.)\n"
+"After this there is a list of polynomials, one per line, which are the minimal\n"
+"polynomials of a_2 + a_3 + ... + a_n.\n"
+"\n"
+"This program works by computing these polynomials mod p for successively larger\n"
+"and larger primes p until the computation stabilizes; technically this is not a\n"
+"proof that they are correct.\n";
+
 int main(int argc, char ** argv) {
     clock_t start_time = clock();
     int level;
@@ -25,7 +41,7 @@ int main(int argc, char ** argv) {
     long p;
 
     if(argc < 5) {
-        cout << "./hecke-polynomial level weight chi p [verbose]" << endl;
+        cout << argv[0] << usage;
         return 0;
     }
 
@@ -204,7 +220,7 @@ int main(int argc, char ** argv) {
     }
 
     clock_t end_time = clock();
-    cout << (end_time - start_time)/(double)CLOCKS_PER_SEC << endl;
+    //cout << (end_time - start_time)/(double)CLOCKS_PER_SEC << endl;
 
     fmpz_clear(a);
     fmpz_clear(b);
