@@ -484,9 +484,9 @@ int main(int argc, char ** argv) {
                 if(bits > maxbits) maxbits = bits;
             }
             arb_poly_set_fmpz_poly(arbfactor, g, maxbits + 10);
+            long evaluation_bits = (maxbits + 10) * fmpz_poly_degree(g);
+            if(evaluation_bits < prec) evaluation_bits = prec;
             for(int k = 0; k < full_dimension; k++) {
-                long evaluation_bits = (maxbits + 10) * fmpz_poly_degree(g);
-                if(evaluation_bits < prec) evaluation_bits = prec;
                 arb_poly_evaluate_acb(t1, arbfactor, eigenvalues + k, evaluation_bits);
                 if(acb_contains_zero(t1)) {
                     if(matches[k] != -1) {
