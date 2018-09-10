@@ -478,9 +478,16 @@ int main(int argc, char ** argv) {
         arb_poly_init(arbfactor);
         for(int l = 0; l < nfactors; l++) {
             fmpz_poly_set_ZZX(g, factors[l].a);
-            arb_poly_set_fmpz_poly(arbfactor, g, prec); // TODO: probably need to increase the precision here
+            long maxbits = 0;
+            for(int k = 0; k <= fmpz_poly_degree(g); k++) {
+                long bits = fmpz_bits(fmpz_poly_get_coeff_ptr(g, k));
+                if(bits > maxbits) maxbits = bits;
+            }
+            arb_poly_set_fmpz_poly(arbfactor, g, maxbits + 10);
             for(int k = 0; k < full_dimension; k++) {
-                arb_poly_evaluate_acb(t1, arbfactor, eigenvalues + k, 10*prec);
+                long evaluation_bits = (maxbits + 10) * fmpz_poly_degree(g);
+                if(evaluation_bits < prec) evaluation_bits = prec;
+                arb_poly_evaluate_acb(t1, arbfactor, eigenvalues + k, evaluation_bits);
                 if(acb_contains_zero(t1)) {
                     if(matches[k] != -1) {
                         cout << "ohno1" << endl;
