@@ -86,3 +86,4 @@ todo
 .d
 bin
 libmodform.a
+*.polydb

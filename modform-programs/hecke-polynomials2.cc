@@ -22,6 +22,20 @@
 
 using namespace std;
 
+const char * usage =
+" leve weight mfdb polydb [overwrite]\n"
+"\n"
+"Given an input file with embeddings of newforms, compute the decomposition\n"
+"of each character space into Galois orbits over Q and put this information\n"
+"into the output file polydb.\n"
+"\n"
+"This program expects that if\n"
+"there is data about one character in a Galois orbit in the database, then there\n"
+"will be data for all of the characters. So it is a little fragile in a few ways.\n"
+"\n"
+"By default, overwrite is set to 0. If it is nonzero, the contents of the\n"
+"hecke_polynomials table in the output database (if it exists) will be deleted.\n";
+
 ostream& operator << (ostream& out, fmpz_t in) {
     char * outstr = fmpz_get_str(NULL, 10, in);
     out.write(outstr, strlen(outstr));
@@ -253,23 +267,38 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
 
 
 int main(int argc, char ** argv) {
+    if(argc < 5) {
+        cout << argv[0] << usage;
+        return 0;
+    }
     clock_t start_time = clock();
     long p = 1125899906842679l;
-    string mfdbname = argv[1];
-    string polydbname = argv[2];
+    string mfdbname = argv[3];
+    string polydbname = argv[4];
 
-    int level = 0;
-    int weight = 0;
+    int level = atoi(argv[1]);
+    int weight = atoi(argv[2]);
     set<long> chi_list;
     int * dimensions = NULL;
     init_classnumbers();
     int prec = 0;
 
     sqlite3 * db;
-    if(sqlite3_open(mfdbname.c_str(), &db) != SQLITE_OK) {
-        cout << "ohno error opening input database." << endl;
+    if(sqlite3_open(":memory:", &db) != SQLITE_OK) {
+        cout << "ohno error opening in memory database." << endl;
         return 1;
     }
+    int retval;
+
+    retval = sqlite3_exec(db, "CREATE TABLE modforms (level INTEGER, weight INTEGER, chi INTEGER, orbit INTEGER, j INTEGER, prec INTEGER, exponent INTEGER, ncoeffs INTEGER, coefficients BLOB)", NULL, 0, NULL);
+    retval = sqlite3_exec(db, "CREATE INDEX mf_level_weight_chi_j ON modforms (level, weight, chi, j);", NULL, 0, NULL);
+    string attach_stmt = "ATTACH DATABASE '" + mfdbname + "' AS infiledb;";
+    retval = sqlite3_exec(db, attach_stmt.c_str(), NULL, 0, NULL);
+    string copy_stmt = "INSERT INTO modforms SELECT * from infiledb.modforms WHERE level=" + to_string(level) + " AND weight=" + to_string(weight);
+    retval = sqlite3_exec(db, copy_stmt.c_str(), NULL, 0, NULL);
+    retval = sqlite3_exec(db, "DETACH DATABASE infiledb;", NULL, 0, NULL);
+
+    cout << "input data loaded into memory." << endl;
 
     sqlite3 * polydb;
     if(sqlite3_open(polydbname.c_str(), &polydb) != SQLITE_OK) {
@@ -277,6 +306,14 @@ int main(int argc, char ** argv) {
         return 1;
     }
     polydb_init(polydb);
+
+    int overwrite = 0;
+    if(argc > 6) {
+        overwrite = atoi(argv[6]);
+    }
+    if(overwrite) {
+        sqlite3_exec(polydb, "DELETE FROM heckepolys;", NULL, 0, NULL);
+    }
 
     mfheader * headers;
     int count = mfdb_contents(db, &headers);
