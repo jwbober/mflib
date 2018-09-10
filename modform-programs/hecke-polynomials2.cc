@@ -44,11 +44,6 @@ int arb_get_unique_fmpz_modular(fmpz_t out, arb_t real_approx, fmpz_t modular_ap
     //
     // Returns 1 on success, 0 if there is no such integer.
 
-    cout << "Entering arb_get_unique_fmpz_modular()."  << endl;
-    cout << "real_approx = " << real_approx << endl;
-    cout << "modular_approx = " << modular_approx << endl;
-    cout << "mod = " << mod << endl;
-
     fmpz_t a, b, e;
     fmpz_init(a);
     fmpz_init(b);
