@@ -465,6 +465,7 @@ int main(int argc, char ** argv) {
         // All went well.
         // Now to just record all the information we just computed...
 
+        sqlite3_exec(polydb, "BEGIN TRANSACTION", NULL, NULL, NULL);
         for(int l = 0; l < nfactors; l++) {
             fmpz_poly_set_ZZX(g, factors[l].a);
             fmpz_poly_print_pretty(g, "x");
@@ -480,6 +481,7 @@ int main(int argc, char ** argv) {
                     level, weight, orbit[0], l, 0);
             cout << endl;
         }
+        sqlite3_exec(polydb, "END TRANSACTION", NULL, NULL, NULL);
 
 
 
