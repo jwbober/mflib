@@ -85,7 +85,7 @@ const vector<int>& cuspforms_modp::newspace_basis_data(bool coprime_only) {
 
     if(nmod_mat_det(basis) != 0) {
         nmod_mat_clear(basis);
-        return basis_rows;
+        return *basis_rows_ptr;
     }
 
     int k = 0;
