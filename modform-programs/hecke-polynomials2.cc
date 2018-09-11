@@ -213,6 +213,9 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
         p = S->p;
         if(verbose) cout << p << endl;
+        if(verbose) {
+            cout << fmpz_bits(modulus) << " " << fmpz_bits(precision) << endl;
+        }
         nmod_poly_init(hecke_poly_modp, p);
         nmod_poly_one(hecke_poly_modp);
         nmod_poly_t f;
@@ -248,9 +251,6 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         nmod_poly_clear(hecke_poly_modp);
         clear_cuspforms_modp();
     //} while(!fmpz_poly_equal(hecke1, hecke2));
-        if(verbose) {
-            cout << fmpz_bits(modulus) << " " << fmpz_bits(precision) << endl;
-        }
     } while(fmpz_cmp(modulus, precision) < 0);
 
     fmpz_set(precision, modulus);
@@ -326,7 +326,7 @@ int main(int argc, char ** argv) {
                                                    // which is the only case where the character number might
                                                    // get as large as the level
             else
-                dimensions = new int[level](); 
+                dimensions = new int[level]();
         }
         weight = headers[k].weight;
         chi_list.insert(headers[k].chi);
@@ -357,9 +357,55 @@ int main(int argc, char ** argv) {
         acb_ptr coeffs;
         int dimension = dimensions[chi_number];
         int full_dimension = orbit.size() * dimension;
+        prec = full_dimension * 300;
         acb_ptr eigenvalues = _acb_vec_init(full_dimension);
         bool unique_eigenvalues = false;
         int k = 2;
+
+        while(!unique_eigenvalues && (k < 30)) {
+            // we really prefer to compute the minimal polynomial of just one hecke-eigenvalue,
+            // so let's try that first.
+            cout << "Trying Hecke operator " << k << endl;
+            hecke_operator.push_back(1);
+            for(int l = 0; l < orbit.size(); l++) {
+                long chi_number = orbit[l];
+                long chi_inverse = InvMod(chi_number, level);
+                if(level == 1) chi_inverse = 1;
+                for(int j = 0; j < dimension; j++) {
+                    if(chi_number <= chi_inverse) {
+                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
+                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
+                    }
+                    else {
+                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
+                        acb_conj(coeffs + k - 1, coeffs + k - 1);
+                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
+                    }
+                    _acb_vec_clear(coeffs, header.ncoeffs);
+                }
+            }
+            unique_eigenvalues = true;
+            for(int n = 0; n < dimension * orbit.size(); n++) {
+                for(int m = n + 1; m < dimension * orbit.size(); m++) {
+                    if(acb_overlaps(eigenvalues + n, eigenvalues + m)) {
+                        unique_eigenvalues = false;
+                        break;
+                    }
+                }
+                if(!unique_eigenvalues) {
+                    hecke_operator.pop_back();
+                    hecke_operator.push_back(0);
+                    break;
+                }
+            }
+            k++;
+
+        }
+
+        if(!unique_eigenvalues) {
+            hecke_operator.clear();
+            k = 2;
+        }
 
         while(!unique_eigenvalues) {
             hecke_operator.push_back(k - 1);
@@ -398,7 +444,7 @@ int main(int argc, char ** argv) {
 
         acb_poly_t heckepoly;
         acb_poly_init(heckepoly);
-        acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, 50*prec);
+        acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, prec);
         //for(int l = 0; l < full_dimension; l++) {
         //    acb_poly_set_coeff_si(f, 1, 1);
         //    acb_mul_si(eigenvalues + l, eigenvalues + l, -1, prec);
