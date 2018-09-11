@@ -3,6 +3,7 @@
 
 #include "slint.h"
 
+#include <iostream>
 #include <complex>
 #include <cmath>
 #include <vector>
