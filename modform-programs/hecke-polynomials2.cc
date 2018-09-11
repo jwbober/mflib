@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <ctime>
 #include <cstring>
+#include <thread>
 
 #include "NTL/ZZX.h"
 #include "NTL/ZZXFactoring.h"
@@ -177,6 +178,10 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
 
     set<long> _orbit = chi.galois_orbit();
     vector<long> orbit(_orbit.begin(), _orbit.end());
+    int orbitsize = orbit.size();
+    if(verbose) {
+        cout << "in hecke_polynomial_modular_approximation: Galois orbit size is " << orbitsize << endl;
+    }
 
     fmpz_poly_t hecke1;
     fmpz_poly_t hecke2;
@@ -218,26 +223,42 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         }
         nmod_poly_init(hecke_poly_modp, p);
         nmod_poly_one(hecke_poly_modp);
-        nmod_poly_t f;
-        nmod_poly_init(f, p);
-        for(long m : orbit) {
+        nmod_poly_t * local_polys = new nmod_poly_t[orbitsize];
+        for(int k = 0; k < orbitsize; k++) {
+            nmod_poly_init(local_polys[k], p);
+        }
+        //nmod_poly_init(f, p);
+
+        std::thread * threads = new std::thread[orbitsize];
+        //for(long m : orbit) {
+        for(int k = 0; k < orbitsize; k++) {
+            long m = orbit[k];
             chi = G.character(m);
             cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
             p = S->p;
-            nmod_mat_t hecke_mat;
-            nmod_mat_init(hecke_mat, S->new_dimension(), S->new_dimension(), p);
-            for(int l = 2; l < hecke_operator.size() + 2; l++) {
-                int cl = hecke_operator[l - 2];
-                if(cl == 0) continue;
-                nmod_mat_t Tl;
-                S->hecke_matrix(Tl, l);
-                nmod_mat_scalar_mul_add(hecke_mat, hecke_mat, cl, Tl);
-                nmod_mat_clear(Tl);
-            }
-            nmod_mat_charpoly(f, hecke_mat);
-            nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
-            nmod_mat_clear(hecke_mat);
+
+            threads[k] = std::thread( [local_polys, k, S, p, &hecke_operator](){
+                nmod_mat_t hecke_mat;
+                nmod_mat_init(hecke_mat, S->new_dimension(), S->new_dimension(), p);
+                for(int l = 2; l < hecke_operator.size() + 2; l++) {
+                    int cl = hecke_operator[l - 2];
+                    if(cl == 0) continue;
+                    nmod_mat_t Tl;
+                    S->hecke_matrix(Tl, l);
+                    nmod_mat_scalar_mul_add(hecke_mat, hecke_mat, cl, Tl);
+                    nmod_mat_clear(Tl);
+                }
+                nmod_mat_charpoly(local_polys[k], hecke_mat);
+                //nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
+                nmod_mat_clear(hecke_mat);
+                });
         }
+        for(int k = 0; k < orbitsize; k++) {
+            threads[k].join();
+            nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, local_polys[k]);
+            nmod_poly_clear(local_polys[k]);
+        }
+        delete [] local_polys;
         int degree = nmod_poly_degree(hecke_poly_modp);
         for(int k = 0; k <= degree; k++) {
             fmpz_poly_get_coeff_fmpz(a, hecke1, k);
@@ -247,7 +268,7 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         }
         fmpz_mul_ui(modulus, modulus, p);
 
-        nmod_poly_clear(f);
+        //nmod_poly_clear(f);
         nmod_poly_clear(hecke_poly_modp);
         clear_cuspforms_modp();
     //} while(!fmpz_poly_equal(hecke1, hecke2));
@@ -281,6 +302,7 @@ int main(int argc, char ** argv) {
     set<long> chi_list;
     int * dimensions = NULL;
     init_classnumbers();
+    load_factor_table();
     int prec = 0;
 
     sqlite3 * db;
@@ -444,6 +466,7 @@ int main(int argc, char ** argv) {
 
         acb_poly_t heckepoly;
         acb_poly_init(heckepoly);
+        cout << "forming product polynomial." << endl;
         acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, prec);
         //for(int l = 0; l < full_dimension; l++) {
         //    acb_poly_set_coeff_si(f, 1, 1);
