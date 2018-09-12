@@ -19,6 +19,8 @@
 
 #include "acb_poly.h"
 
+#include "arb_fmpz_poly.h"
+
 #include "arb-extras.h"
 
 using namespace std;
@@ -258,7 +260,9 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
             nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, local_polys[k]);
             nmod_poly_clear(local_polys[k]);
         }
+
         delete [] local_polys;
+        delete [] threads;
         int degree = nmod_poly_degree(hecke_poly_modp);
         for(int k = 0; k <= degree; k++) {
             fmpz_poly_get_coeff_fmpz(a, hecke1, k);
@@ -425,6 +429,9 @@ int main(int argc, char ** argv) {
         }
 
         if(!unique_eigenvalues) {
+            for(int k = 0; k < full_dimension; k++) {
+                acb_zero(eigenvalues + k);
+            }
             hecke_operator.clear();
             k = 2;
         }
@@ -466,8 +473,9 @@ int main(int argc, char ** argv) {
 
         acb_poly_t heckepoly;
         acb_poly_init(heckepoly);
-        cout << "forming product polynomial." << endl;
-        acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, prec);
+        cout << "forming product polynomial: " << clock() << endl;
+        acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, 300);
+        cout << "finished forming product polynomial: " << clock() << endl;
         //for(int l = 0; l < full_dimension; l++) {
         //    acb_poly_set_coeff_si(f, 1, 1);
         //    acb_mul_si(eigenvalues + l, eigenvalues + l, -1, prec);
@@ -524,13 +532,13 @@ int main(int argc, char ** argv) {
         NTL::ZZX ff;
         NTL::vec_pair_ZZX_long factors;
         fmpz_poly_get_ZZX(ff, zheckepoly);
+        cout << "factoring polynomial: " << clock() << endl;
         NTL::factor(content, factors, ff);
+        cout << "finished factoring polynomial: " << clock() << endl;
         fmpz_poly_t g;
         fmpz_poly_init(g);
 
         int nfactors = factors.length();
-        arb_poly_t arbfactor;
-        arb_poly_init(arbfactor);
         int * matches = new int[full_dimension];
         for(int k = 0; k < full_dimension; k++) {
             matches[k] = -1;
@@ -544,31 +552,160 @@ int main(int argc, char ** argv) {
         //}
         //cout << endl;
 
-        arb_poly_init(arbfactor);
+        fmpz_poly_struct * fmpz_factors = new fmpz_poly_struct[nfactors];
+        long * evaluation_bits = new long[nfactors];
+        int * roots_found = new int[nfactors];
+
         for(int l = 0; l < nfactors; l++) {
+            fmpz_poly_struct * g = fmpz_factors + l;
+            fmpz_poly_init(g);
             fmpz_poly_set_ZZX(g, factors[l].a);
             long maxbits = 0;
             for(int k = 0; k <= fmpz_poly_degree(g); k++) {
                 long bits = fmpz_bits(fmpz_poly_get_coeff_ptr(g, k));
                 if(bits > maxbits) maxbits = bits;
             }
-            arb_poly_set_fmpz_poly(arbfactor, g, maxbits + 10);
-            long evaluation_bits = (maxbits + 10) * fmpz_poly_degree(g);
-            if(evaluation_bits < prec) evaluation_bits = prec;
-            for(int k = 0; k < full_dimension; k++) {
-                arb_poly_evaluate_acb(t1, arbfactor, eigenvalues + k, evaluation_bits);
-                if(acb_contains_zero(t1)) {
-                    if(matches[k] != -1) {
-                        cout << "ohno1" << endl;
-                        continue;
+            evaluation_bits[l] = (maxbits + 10) * fmpz_poly_degree(g);
+            if(evaluation_bits[l] < prec) evaluation_bits[l] = prec;
+            roots_found[l] = 0;
+        }
+
+        cout << "factor degrees:";
+        for(int l = 0; l < nfactors; l++) {
+            cout << " " << fmpz_poly_degree(fmpz_factors + l);
+        }
+        cout << endl;
+
+        // we first try to evaluate each of the polynomials as every possible
+        // root. for each polynomial, if we find exactly the right number of
+        // possible roots, then we know that we found them all, and we are
+        // finished with that polynomial now and 
+        cout << "in root matching phase 1" << endl;
+
+        bool matched_all_roots = true;
+
+        if(nfactors == 1) {
+            for(int k = 0; k < full_dimension; k++) matches[k] = 1;
+        }
+        else {
+            bool * possible_root_table = new bool[full_dimension * nfactors]();
+            for(int l = 0; l < nfactors; l++) {
+                fmpz_poly_struct * g = fmpz_factors + l;
+                if(roots_found[l] == fmpz_poly_degree(g)) continue;
+
+                vector<int> possible_roots;
+                for(int k = 0; k < full_dimension; k++) {
+                    if(matches[k] != -1) continue; // we only set matches[k] if we are completely
+                                                   // certain that eigenvalues[k] is a root of that
+                                                   // factor, which means that it can't be a root
+                                                   // of a different factor
+                    cout << clock() << " evaluating polynomial " << l << " (degree " << fmpz_poly_degree(g) << ") at root " << k;
+                    arb_fmpz_poly_evaluate_acb(t1, g, eigenvalues + k, evaluation_bits[l]);
+                    if(acb_contains_zero(t1)) {
+                        possible_root_table[k + full_dimension*l] = true;
+                        possible_roots.push_back(k);
+                        cout << " possible zero: " << possible_roots.size() << " out of " << fmpz_poly_degree(g) << " roots found." << endl;
+                        //if(matches[k] != -1) {
+                        //    cout << "ohno1" << endl;
+                        //    continue;
+                        //}
+                        //matches[k] = l;
                     }
-                    matches[k] = l;
+                    else {
+                        cout << " not a zero" << endl;
+                    }
+                }
+                if(possible_roots.size() == fmpz_poly_degree(g)) {
+                    cout << "found all roots for polynomial " << l << endl;
+                    for(int k : possible_roots) {
+                        for(int l2 = 0; l2 < nfactors; l2++) {
+                            if(l2 != l) possible_root_table[k + full_dimension*l2] = false;
+                        }
+                        matches[k] = l;
+                    }
+                    roots_found[l] = fmpz_poly_degree(g);
+                }
+                else {
+                    cout << "ambiguity for polynomial " << l << endl;
+                    matched_all_roots = false;
+                }
+            }
+        
+            bool progress_made = true;
+            while(progress_made && (!matched_all_roots)) {
+                progress_made = false;
+                cout << "attempting phase 2 root matching..." << endl;
+                // at this point it is possible that a later polynomial evaluation will have
+                // removed the ambiguity in an earlier evaluation, and it is also possible
+                // that we can certify some roots because they only evaluate to an interval
+                // containing zero on a single polynomial, which is not something that we
+                // have checked.
+                //
+                // (We still won't be able to handle the case where there are two
+                //  eigenvalues which both could be roots of the same two polynomials.)
+
+                // first we go through each eigenvalue and see if there is now
+                // only one polynomial it might be a root of.
+
+                matched_all_roots = true; // not really true, but assumed innocent
+                                          // until found guilty...
+                
+                for(int k = 0; k < full_dimension; k++) {
+                    if(matches[k] != -1) continue;
+                    int full_possible_polys = 0;
+                    int possible_poly = -1;
+                    for(int l = 0; l < nfactors; l++) {
+                        if(possible_root_table[k + full_dimension*l]) {
+                            full_possible_polys += 1;
+                            possible_poly = l;
+                        }
+                    }
+                    if(full_possible_polys == 1) {
+                        progress_made = true;
+                        matches[k] = possible_poly;
+                        for(int l = 0; l < nfactors; l++) {
+                            if(l != possible_poly)
+                                possible_root_table[k + full_dimension*l] = false;
+                        }
+                    }
+                }
+
+                // then we go though each polynomial and see if there are exactly the right
+                // number of possible roots left
+                for(int l = 0; l < nfactors; l++) {
+                    if(roots_found[l] == fmpz_poly_degree(fmpz_factors + l)) continue;
+                    vector<int> possible_roots;
+                    for(int k = 0; k < full_dimension; k++) {
+                        if(possible_root_table[k + full_dimension*l]) {
+                            possible_roots.push_back(k);
+                        }
+                    }
+                    if(possible_roots.size() == fmpz_poly_degree(fmpz_factors + l)) {
+                        progress_made = true;
+                        cout << "found all roots for polynomial " << l << endl;
+                        for(int k : possible_roots) {
+                            for(int l2 = 0; l2 < nfactors; l2++) {
+                                if(l2 != l) possible_root_table[k + full_dimension*l2] = false;
+                            }
+                            matches[k] = l;
+                        }
+                        roots_found[l] = fmpz_poly_degree(g);
+                    }
+                    else {
+                        cout << "ambiguity remains for polynomial " << l << endl;
+                        matched_all_roots = false;
+                    }
                 }
             }
         }
-        for(int k = 0; k < full_dimension; k++) {
-            if(matches[k] == -1) cout << "ohno2" << endl;
+
+        if(!matched_all_roots) {
+            cout << "ohno we couldn't match all the eigenvalues to irreducible factors." << endl;
         }
+
+        //for(int k = 0; k < full_dimension; k++) {
+        //    if(matches[k] == -1) cout << "ohno2" << endl;
+        //}
 
         // All went well.
         // Now to just record all the information we just computed...
@@ -578,11 +715,13 @@ int main(int argc, char ** argv) {
             fmpz_poly_set_ZZX(g, factors[l].a);
             fmpz_poly_print_pretty(g, "x");
             vector<int> mforbit;
-            for(int k = 0; k < full_dimension; k++) {
-                if(matches[k] == l) {
-                //    cout << " " << orbit[k/dimension] << '.' << k % dimension;
-                    mforbit.push_back(orbit[k/dimension]);
-                    mforbit.push_back(k % dimension);
+            if(roots_found[l] == fmpz_poly_degree(g)) {
+                for(int k = 0; k < full_dimension; k++) {
+                    if(matches[k] == l) {
+                    //    cout << " " << orbit[k/dimension] << '.' << k % dimension;
+                        mforbit.push_back(orbit[k/dimension]);
+                        mforbit.push_back(k % dimension);
+                    }
                 }
             }
             polydb_insert(polydb, g, hecke_operator.data(), hecke_operator.size(), mforbit.data(), mforbit.size(),
@@ -594,15 +733,17 @@ int main(int argc, char ** argv) {
 
 
         fmpz_poly_clear(g);
-        //cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
-        //int dim = S->new_dimension();
-        //p = S->p;
 
-        //cout << chi << " " << dimensions[chi] << endl;
-        // now that we know what we are dealing with we do some actual computations...
         fmpz_poly_clear(zheckepoly);
         acb_poly_clear(heckepoly);
         _acb_vec_clear(eigenvalues, orbit.size() * dimension);
+        delete [] matches;
+        for(int l = 0; l < nfactors; l++) {
+            fmpz_poly_clear(fmpz_factors + l);
+        }
+        delete [] fmpz_factors;
+        delete [] evaluation_bits;
+        delete [] roots_found;
     }
 
     flint_cleanup();
