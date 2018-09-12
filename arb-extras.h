@@ -1,6 +1,7 @@
 #ifndef _ARB_EXTRAS_H_
 #define _ARB_EXTRAS_H_
 
+#include "acb_poly.h"
 #include "arb_mat.h"
 
 #ifdef __cplusplus
@@ -29,6 +30,10 @@ void acb_reasonable_sqrt(acb_t out, const acb_t in, slong prec);
 
 int arb_poly_gcd(arb_poly_t res,const arb_poly_t a,const arb_poly_t b,slong d, slong prec);
 int arb_poly_sign_change(arb_poly_t f,arb_srcptr x,slong prec); // sgn(f(a)*f(b)), where x=[a,b]
+int arb_get_unique_fmpz_modular(fmpz_t out, arb_t real_approx, fmpz_t modular_approx, fmpz_t mod);
+int arb_poly_get_unique_fmpz_poly_modular(fmpz_poly_t out, arb_poly_t real_approx, fmpz_poly_t modular_approx, fmpz_t mod);
+int acb_poly_get_unique_fmpz_poly_modular(fmpz_poly_t out, acb_poly_t real_approx, fmpz_poly_t modular_approx, fmpz_t mod);
+void arb_get_ubound_fmpz(fmpz_t out, arb_t in, slong prec);
 
 #ifdef __cplusplus
 }

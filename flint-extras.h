@@ -8,6 +8,10 @@
 // #include "flint/whatever" or #include "whatever"
 
 #ifdef __cplusplus
+
+#include <ostream>
+std::ostream& operator << (std::ostream& out, fmpz_t in);
+
 extern "C" {
 #endif
 
