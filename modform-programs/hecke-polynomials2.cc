@@ -177,6 +177,147 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
     return 1;
 }
 
+static void twist_poly(arb_poly_t r1,arb_poly_t r2,const fmpz_poly_t f,slong a,slong q, slong prec) {
+    static arb_t c,s,t;
+    static int init;
+    slong d,n;
+
+    if (!init) {
+        arb_init(c); arb_init(s);
+        arb_init(t);
+        init = 1;
+    }
+    d = fmpz_poly_degree(f);
+    arb_poly_truncate(r1,d+1);
+    arb_poly_truncate(r2,d+1);
+    for (;d>=0;d--) {
+        n = a*d % q;
+        if (n < 0) n += q;
+        arb_set_si(t,2*n);
+        arb_div_si(t,t,q,prec);
+        arb_sin_cos_pi(s,c,t,prec);
+
+        arb_mul_fmpz(t,c,fmpz_poly_get_coeff_ptr(f,d),prec);
+        if (4*n == q || 4*n == 3*q) arb_zero(t);
+        arb_poly_set_coeff_arb(r1,d,t);
+
+        arb_mul_fmpz(t,s,fmpz_poly_get_coeff_ptr(f,d),prec);
+        if (!n || 2*n == q) arb_zero(t);
+        arb_poly_set_coeff_arb(r2,d,t);
+    }
+}
+
+static int phase(acb_srcptr a,int order, slong prec) {
+    static arb_t t,pi;
+    static fmpz_t z;
+    static int init;
+    int res;
+
+    if (order == 1) return 0;
+    if (!init) {
+        arb_init(t); arb_init(pi);
+        fmpz_init(z);
+        init = 1;
+    }
+    acb_arg(t,a,prec);
+    arb_const_pi(pi,prec);
+    arb_div(t,t,pi,prec);
+    arb_mul_si(t,t,order,prec);
+    if (!arb_get_unique_fmpz(z,t)) {
+        fprintf(stderr,"cannot determine phase in arbgcd\n");
+        exit(0);
+    }
+    res = fmpz_get_si(z) % order;
+    if (res < 0) res += order;
+    return res;
+}
+
+
+bool match_eigenvalues_rotate_gcd(int * res,
+                                 const fmpz_poly_struct * poly,
+                                 int npolys,
+                                 const acb_ptr a,
+                                 int ncoeffs,
+                                 int order,
+                                 slong prec) {
+    static arb_poly_t g;
+    static arb_t t;
+    static acb_t x,z;
+    static int init;
+    arb_poly_t *f;
+    int i,j,u,phi,s;
+    bool retval = true;
+
+    if (!init) {
+        arb_poly_init(g); arb_init(t);
+        acb_init(x); acb_init(z);
+        init = 1;
+    }
+
+    f = (arb_poly_t *)malloc(npolys*sizeof(f[0]));
+    for (i=0;i<npolys;i++)
+        arb_poly_init(f[i]);
+
+    for (u=0,phi=0;u<order;u++)
+        if (GCD(u,order) == 1) phi++;
+    for (j=0;j<ncoeffs;j++)
+        res[j] = npolys;
+    for (u=0;u<order;u++)
+        if (GCD(u,order) == 1) {
+            acb_set_si(z,-u);
+            acb_div_si(z,z,order,prec);
+            acb_exp_pi_i(z,z,prec);
+            for (i=0;i<npolys;i++) {
+                fmpz_poly_print_pretty(poly + i, "x");
+                cout  << endl;
+                twist_poly(f[i],g,poly + i,u,2*order, prec);
+                arb_poly_printd(f[i], 10);
+                cout << endl;
+                arb_poly_printd(g, 10);
+                cout << endl;
+                cout << endl;
+                if (arb_poly_gcd(f[i],f[i],g,fmpz_poly_degree(poly + i)/phi, prec) < 0) {
+                    cout << "ohno problem with arb_poly_gcd" << endl;
+                    retval = false;
+                    goto cleanup;
+                }
+            }
+        for (j=0;j<ncoeffs;j++) {
+            if (phase(a + j,order, prec) == u) {
+                acb_mul(x,a + j,z,prec);
+                for (i=0;i<npolys;i++) {
+                    s = arb_poly_sign_change(f[i],acb_realref(x),prec);
+                    if (!s || ((s < 0) && (res[j] < npolys))) {
+                        arb_poly_printd(f[i], 10); cout << endl;
+                        cout << x << " " << a + j << endl;
+                        cout << "ohno found extra roots" << endl;
+                        retval = false;
+                        goto cleanup;
+                    }
+                    if (s < 0) res[j] = i;
+                }
+#if 1
+printf("%d ",res[j]);
+acb_printd(a + j,15);
+printf("\n");
+#endif
+            }
+        }
+    }
+
+    for (j=0;j<ncoeffs;j++) {
+        if (res[j] == npolys) {
+            cout << "ohno problem with root " << j << endl;
+            retval = false;
+        }
+    }
+
+cleanup:
+    for (i=0;i<npolys;i++)
+        arb_poly_clear(f[i]);
+    free(f);
+    return retval;
+}
 
 int main(int argc, char ** argv) {
     if(argc < 5) {
@@ -207,8 +348,16 @@ int main(int argc, char ** argv) {
     retval = sqlite3_exec(db, "CREATE INDEX mf_level_weight_chi_j ON modforms (level, weight, chi, j);", NULL, 0, NULL);
     string attach_stmt = "ATTACH DATABASE '" + mfdbname + "' AS infiledb;";
     retval = sqlite3_exec(db, attach_stmt.c_str(), NULL, 0, NULL);
+    if(retval != SQLITE_OK) {
+        cout << "Error attaching input db." << endl;
+        return 0;
+    }
     string copy_stmt = "INSERT INTO modforms SELECT * from infiledb.modforms WHERE level=" + to_string(level) + " AND weight=" + to_string(weight);
     retval = sqlite3_exec(db, copy_stmt.c_str(), NULL, 0, NULL);
+    if(retval != SQLITE_OK) {
+        cout << "Error reading input db." << endl;
+        return 0;
+    }
     retval = sqlite3_exec(db, "DETACH DATABASE infiledb;", NULL, 0, NULL);
 
     cout << "input data loaded into memory." << endl;
@@ -256,8 +405,6 @@ int main(int argc, char ** argv) {
     while(chi_list.size() > 0) {
         long chi_number = *chi_list.begin();
         DirichletCharacter chi = G.character(chi_number);
-        int realchi = false;
-        if(order_mod(chi_number, level) < 3) realchi = true;
         set<long> _orbit = chi.galois_orbit();
         vector<int> orbit(_orbit.begin(), _orbit.end());
         vector<int> hecke_operator;
@@ -274,10 +421,21 @@ int main(int argc, char ** argv) {
         acb_ptr eigenvalues = _acb_vec_init(full_dimension);
         bool unique_eigenvalues = false;
         int k = 2;
+        bool single_operator = false;
+        int operator_number = 0;  // the number of the hecke operator used if we
+                                  // can get away with using a single hecke operator
+
+        int character_value_order = 0;  // the (multiplicative) order of the value of
+                                        // Dirichlet character when we are using a
+                                        // single Hecke operator.
 
         while(!unique_eigenvalues && (k < 30)) {
             // we really prefer to compute the minimal polynomial of just one hecke-eigenvalue,
-            // so let's try that first.
+            // for a hecke operator coprime to the level, so let's try that first.
+            while(GCD(k, level) != 1) {
+                hecke_operator.push_back(0);
+                k++;
+            }
             cout << "Trying Hecke operator " << k << endl;
             hecke_operator.push_back(1);
             for(int l = 0; l < orbit.size(); l++) {
@@ -298,6 +456,7 @@ int main(int argc, char ** argv) {
                 }
             }
             unique_eigenvalues = true;
+            operator_number = k;
             for(int n = 0; n < dimension * orbit.size(); n++) {
                 for(int m = n + 1; m < dimension * orbit.size(); m++) {
                     if(acb_overlaps(eigenvalues + n, eigenvalues + m)) {
@@ -321,6 +480,12 @@ int main(int argc, char ** argv) {
             }
             hecke_operator.clear();
             k = 2;
+        }
+        else {
+            single_operator = true;
+            long a = G.exponent(chi_number, operator_number);
+            character_value_order = G.phi_q/GCD(a, G.phi_q);
+            cout << character_value_order << endl;
         }
 
         while(!unique_eigenvalues) {
@@ -363,15 +528,6 @@ int main(int argc, char ** argv) {
         cout << "forming product polynomial: " << clock() << endl;
         acb_poly_product_roots(heckepoly, eigenvalues, full_dimension, 300);
         cout << "finished forming product polynomial: " << clock() << endl;
-        //for(int l = 0; l < full_dimension; l++) {
-        //    acb_poly_set_coeff_si(f, 1, 1);
-        //    acb_mul_si(eigenvalues + l, eigenvalues + l, -1, prec);
-        //    acb_poly_set_coeff_acb(f, 0, eigenvalues + l);
-        //    acb_mul_si(eigenvalues + l, eigenvalues + l, -1, prec);
-        //    acb_poly_mul(heckepoly, heckepoly, f, prec);
-        //}
-        //acb_poly_printd(heckepoly, 10);
-        //cout << endl;
 
         fmpz_poly_t zheckepoly;
         fmpz_poly_init(zheckepoly);
@@ -426,10 +582,6 @@ int main(int argc, char ** argv) {
         fmpz_poly_init(g);
 
         int nfactors = factors.length();
-        int * matches = new int[full_dimension];
-        for(int k = 0; k < full_dimension; k++) {
-            matches[k] = -1;
-        }
 
         acb_t t1;
         acb_init(t1);
@@ -442,6 +594,8 @@ int main(int argc, char ** argv) {
         fmpz_poly_struct * fmpz_factors = new fmpz_poly_struct[nfactors];
         long * evaluation_bits = new long[nfactors];
         int * roots_found = new int[nfactors];
+
+
 
         for(int l = 0; l < nfactors; l++) {
             fmpz_poly_struct * g = fmpz_factors + l;
@@ -463,18 +617,34 @@ int main(int argc, char ** argv) {
         }
         cout << endl;
 
+        bool matched_all_roots = false;
+        int * matches = new int[full_dimension];
+        if(nfactors == 1) {
+            for(int k = 0; k < full_dimension; k++) matches[k] = 1;
+            matched_all_roots = true;
+        }
+        if(!matched_all_roots && single_operator) {
+            cout << "single hecke operator, so attempting gcd trick." << endl;
+            matched_all_roots =  match_eigenvalues_rotate_gcd(matches,
+                                     fmpz_factors,
+                                     nfactors,
+                                     eigenvalues,
+                                     full_dimension,
+                                     character_value_order,
+                                     prec);
+        }
+
+        if(!matched_all_roots) {
+            for(int k = 0; k < full_dimension; k++) {
+                matches[k] = -1;
+            }
         // we first try to evaluate each of the polynomials as every possible
         // root. for each polynomial, if we find exactly the right number of
         // possible roots, then we know that we found them all, and we are
-        // finished with that polynomial now and 
-        cout << "in root matching phase 1" << endl;
+        // finished with that polynomial now.
+            cout << "in root matching phase 1" << endl;
+            matched_all_roots = true;
 
-        bool matched_all_roots = true;
-
-        if(nfactors == 1) {
-            for(int k = 0; k < full_dimension; k++) matches[k] = 1;
-        }
-        else {
             bool * possible_root_table = new bool[full_dimension * nfactors]();
             for(int l = 0; l < nfactors; l++) {
                 fmpz_poly_struct * g = fmpz_factors + l;
@@ -517,7 +687,7 @@ int main(int argc, char ** argv) {
                     matched_all_roots = false;
                 }
             }
-        
+
             bool progress_made = true;
             while(progress_made && (!matched_all_roots)) {
                 progress_made = false;
@@ -536,7 +706,7 @@ int main(int argc, char ** argv) {
 
                 matched_all_roots = true; // not really true, but assumed innocent
                                           // until found guilty...
-                
+
                 for(int k = 0; k < full_dimension; k++) {
                     if(matches[k] != -1) continue;
                     int full_possible_polys = 0;
