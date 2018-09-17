@@ -224,8 +224,13 @@ static int phase(acb_srcptr a,int order, slong prec) {
     arb_div(t,t,pi,prec);
     arb_mul_si(t,t,order,prec);
     if (!arb_get_unique_fmpz(z,t)) {
-        fprintf(stderr,"cannot determine phase in arbgcd\n");
-        exit(0);
+        printf("ehh cannot determine phase in arbgcd\n");
+        cout << order << endl;
+        acb_printd(a, 10);
+        cout << endl;
+        arb_printd(t, 10);
+        cout << endl;
+        return -1;
     }
     res = fmpz_get_si(z) % order;
     if (res < 0) res += order;
@@ -268,6 +273,7 @@ bool match_eigenvalues_rotate_gcd(int * res,
             acb_div_si(z,z,order,prec);
             acb_exp_pi_i(z,z,prec);
             for (i=0;i<npolys;i++) {
+                cout << order << endl;
                 fmpz_poly_print_pretty(poly + i, "x");
                 cout  << endl;
                 twist_poly(f[i],g,poly + i,u,2*order, prec);
@@ -276,27 +282,54 @@ bool match_eigenvalues_rotate_gcd(int * res,
                 arb_poly_printd(g, 10);
                 cout << endl;
                 cout << endl;
-                if (arb_poly_gcd(f[i],f[i],g,fmpz_poly_degree(poly + i)/phi, prec) < 0) {
-                    cout << "ohno problem with arb_poly_gcd" << endl;
-                    retval = false;
-                    goto cleanup;
+                // It may be the case that f[i] or g is zero, for example when all the
+                // roots or already real, or in a more complicated exmaple, when the input
+                // polynomial is something like x^4 + 100.
+                //
+                // In this second example the degree of the gcd will not be what we
+                // expect generically, but we're ok because we know what the gcd is
+                // because we know that one of the polynomials is exactly zero and
+                // we only need to know the degree to compute the gcd/
+                if(arb_poly_is_zero(f[i])) {
+                    arb_poly_set(f[i], g);
+                }
+                else if(arb_poly_is_zero(g)) {
+                    // do nothing
+                }
+                else {// neither is zero, so do the gcd
+                    if (arb_poly_gcd(f[i],f[i],g,fmpz_poly_degree(poly + i)/phi, prec) < 0) {
+                        cout << "ehh problem with arb_poly_gcd" << endl;
+                        retval = false;
+                        goto cleanup;
+                    }
                 }
             }
         for (j=0;j<ncoeffs;j++) {
-            if (phase(a + j,order, prec) == u) {
+            int thisphase = 0;
+            if(acb_contains_zero(a + j)) {
+                thisphase = u;
+            }
+            else {
+                thisphase = phase(a + j, order, prec);
+            }
+            if(thisphase < 0) {
+                retval = false;
+                goto cleanup;
+            }
+            if (thisphase == u) {
                 acb_mul(x,a + j,z,prec);
                 for (i=0;i<npolys;i++) {
                     s = arb_poly_sign_change(f[i],acb_realref(x),prec);
                     if (!s || ((s < 0) && (res[j] < npolys))) {
                         arb_poly_printd(f[i], 10); cout << endl;
                         cout << x << " " << a + j << endl;
-                        cout << "ohno found extra roots" << endl;
+                        cout << "ehh found extra roots or couldn't find a sign change" << endl;
                         retval = false;
                         goto cleanup;
                     }
                     if (s < 0) res[j] = i;
                 }
-#if 1
+#if 0
 printf("%d ",res[j]);
 acb_printd(a + j,15);
 printf("\n");
@@ -307,7 +340,7 @@ printf("\n");
 
     for (j=0;j<ncoeffs;j++) {
         if (res[j] == npolys) {
-            cout << "ohno problem with root " << j << endl;
+            cout << "ehh problem with root " << j << endl;
             retval = false;
         }
     }
@@ -417,7 +450,7 @@ int main(int argc, char ** argv) {
         acb_ptr coeffs;
         int dimension = dimensions[chi_number];
         int full_dimension = orbit.size() * dimension;
-        prec = full_dimension * 300;
+        //prec = full_dimension * 300;
         acb_ptr eigenvalues = _acb_vec_init(full_dimension);
         bool unique_eigenvalues = false;
         int k = 2;
@@ -593,6 +626,7 @@ int main(int argc, char ** argv) {
 
         fmpz_poly_struct * fmpz_factors = new fmpz_poly_struct[nfactors];
         long * evaluation_bits = new long[nfactors];
+        long max_coefficient_bits = 0;
         int * roots_found = new int[nfactors];
 
 
@@ -606,6 +640,7 @@ int main(int argc, char ** argv) {
                 long bits = fmpz_bits(fmpz_poly_get_coeff_ptr(g, k));
                 if(bits > maxbits) maxbits = bits;
             }
+            if(maxbits > max_coefficient_bits) max_coefficient_bits = maxbits;
             evaluation_bits[l] = (maxbits + 10) * fmpz_poly_degree(g);
             if(evaluation_bits[l] < prec) evaluation_bits[l] = prec;
             roots_found[l] = 0;
@@ -625,13 +660,19 @@ int main(int argc, char ** argv) {
         }
         if(!matched_all_roots && single_operator) {
             cout << "single hecke operator, so attempting gcd trick." << endl;
-            matched_all_roots =  match_eigenvalues_rotate_gcd(matches,
-                                     fmpz_factors,
-                                     nfactors,
-                                     eigenvalues,
-                                     full_dimension,
-                                     character_value_order,
-                                     prec);
+            long gcd_prec = 4*(max_coefficient_bits + full_dimension + 100);
+            while(!matched_all_roots && gcd_prec < 5000000) {
+                cout << "trying gcd match with precsion " << gcd_prec << endl;
+                matched_all_roots =  match_eigenvalues_rotate_gcd(matches,
+                                         fmpz_factors,
+                                         nfactors,
+                                         eigenvalues,
+                                         full_dimension,
+                                         character_value_order,
+                                         gcd_prec);
+                gcd_prec = 2*gcd_prec;
+            }
+
         }
 
         if(!matched_all_roots) {
