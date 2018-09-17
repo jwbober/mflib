@@ -27,6 +27,13 @@ const int MFV2 = 3294797;
 const int MFV1 = 3229261;
 #endif
 
+// The 'reserved' bytes in the following struct are probably a bit silly,
+// because this is left over from a time when I was writing out each newform
+// to a separate file and I thought I might change for format around
+// in the future.
+//
+// That might be occasionally convenient, but I'm not sure I'm ever going
+// to do it anymore.
 struct mfheader {
     uint32_t version; // == MFV1 or MFV2
     uint32_t level;
@@ -39,6 +46,13 @@ struct mfheader {
     uint32_t ncoeffs;
     char reserved[92];
 }; // For a grand total of 128 bytes, since that is a nice round number.
+
+/*
+struct mfdb_entry {
+    struct mfheader header;
+    acb_ptr coeffs;
+};
+*/
 
 int write_mfheader(FILE * outfile, struct mfheader * header);       // read or write an mfheader.
 int read_mfheader(FILE * outfile, struct mfheader * header);        // return 0 on failue, 1 on success.

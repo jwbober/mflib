@@ -406,6 +406,78 @@ int mfdb_get_entry(sqlite3 * db, struct mfheader * header, acb_ptr * coeffs, int
     return 1;
 }
 
+/*
+int mfdb_get_entries(sqlite3 * db, struct mfdb_entry * entries, int * dimensions, int level, int weight) {
+    // allocates memory for an array of mfdb_entrys and fills it.
+    //
+    // returns a number J which is the maximum dimension of any space of
+    // newforms that we found. on return, entries[chi + J*j] will be an entry
+    // corresponding the newform level.weight.chi.j in the database, and
+    // dimensions[chi] will be the dimension of the space for that
+    // character.
+    //
+    // dimensions should have been allocated by the caller, and will be
+    // modified. entries will be allocated by this function, and the
+    // caller is responsible for freeing it (by calling free()). However,
+    //
+    //
+    // (This is a bit wasteful because the dimensions are not all the same
+    // and because there's memory allocated for chi that aren't characters.
+    // But probably something like 10% to 25% of the headers created are
+    // actually used, and the coefficients themselves probably take up
+    // at least 100 or 200 times the storage of the headers, so this is a
+    // relatively small percentage waste, I think.
+
+    char sql1[] = "SELECT max(j) FROM modforms "
+                    "WHERE level=? and weight=?";
+    sqlite3_stmt * stmt;
+    int result = sqlite3_prepare_v2(db, sql1, sizeof(sql), &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, level);
+    sqlite3_bind_int(stmt, 2, weight);
+
+    result = sqlite3_step(stmt);
+    if(result != SQLITE_ROW) {
+    sqlite3_finalize(stmt);
+        return 0;
+    }
+    int J = sqlite3_column_int(stmt, 0) + 1;
+    sqlite3_finalize(stmt);
+
+    char sql2[] = "SELECT level, weight, chi, orbit, j, prec, exponent, ncoeffs, coefficients FROM modforms "
+                    "WHERE level=? and weight=?";
+
+    int result = sqlite3_prepare_v2(db, sql2, sizeof(sql), &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, level);
+    sqlite3_bind_int(stmt, 2, weight);
+
+    result = sqlite3_step(stmt);
+    if(result != SQLITE_ROW) {
+        return 0;
+    }
+    while(result == SQLITE_ROW) {
+        header->level = sqlite3_column_int(stmt, 0);
+        header->weight = sqlite3_column_int(stmt, 1);
+        header->chi = sqlite3_column_int(stmt, 2);
+        header->orbit = sqlite3_column_int(stmt, 3);
+        header->j = sqlite3_column_int(stmt, 4);
+        header->prec = sqlite3_column_int(stmt, 5);
+        header->exponent = sqlite3_column_int(stmt, 6);
+        header->ncoeffs = sqlite3_column_int(stmt, 7);
+
+        const void * coeff_data = sqlite3_column_blob(stmt, 8);
+        size_t coeff_datasize = sqlite3_column_bytes(stmt, 8);
+
+        header->version = MFV2;
+        read_mfdatablob(coeff_data, coeff_datasize, header, coeffs);
+    }
+
+        sqlite3_finalize(stmt);
+    return 1;
+
+
+}
+*/
+
 int mfdb_contents(sqlite3 * db, struct mfheader** headers) {
     char countsql[] = "SELECT COUNT(*) FROM modforms;";
     sqlite3_stmt * stmt;

@@ -14,6 +14,8 @@
 #include <cstring>
 #include <thread>
 
+#include <unordered_map>
+
 #include "NTL/ZZX.h"
 #include "NTL/ZZXFactoring.h"
 
@@ -22,6 +24,7 @@
 #include "arb_fmpz_poly.h"
 
 #include "arb-extras.h"
+#include "flint-extras.h"
 
 using namespace std;
 
@@ -38,6 +41,18 @@ const char * usage =
 "\n"
 "By default, overwrite is set to 0. If it is nonzero, the contents of the\n"
 "hecke_polynomials table in the output database (if it exists) will be deleted.\n";
+
+struct pair_hash {
+    std::size_t operator()(const pair<int,int> &x) const {
+        return x.first + ((long)x.second << 32);
+    }
+};
+
+struct pair_equal {
+    bool operator()(const pair<int,int> &x, const pair<int,int> &y) const {
+        return x == y;
+    }
+};
 
 int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weight, int chi_number, vector<int> hecke_operator, fmpz_t precision) {
     int verbose2 = 0;
@@ -413,6 +428,9 @@ int main(int argc, char ** argv) {
     mfheader * headers;
     int count = mfdb_contents(db, &headers);
 
+    unordered_map<pair<int,int>, mfheader*, pair_hash, pair_equal> header_table;
+    unordered_map<pair<int,int>, acb_ptr, pair_hash, pair_equal> coeff_table;
+
     for(int k = 0; k < count; k++) {
         level = headers[k].level;
         if(!dimensions) {
@@ -423,6 +441,7 @@ int main(int argc, char ** argv) {
             else
                 dimensions = new int[level]();
         }
+        header_table[make_pair((int)headers[k].chi, (int)headers[k].j)] = headers + k;
         weight = headers[k].weight;
         chi_list.insert(headers[k].chi);
         if(-headers[k].prec > prec) prec = -headers[k].prec;
@@ -432,7 +451,20 @@ int main(int argc, char ** argv) {
     if(prec < 0) prec = 200;
     prec = 30*prec;
     cout << "using working precision " << prec << endl;
-    free(headers);
+    //free(headers);
+
+    for(int chi = 1; chi <= level; chi++) {
+        if(header_table.count(make_pair(chi, 0)) == 0) continue;
+        for(int j = 0; j < dimensions[chi]; j++) {
+            mfheader header;
+            acb_ptr coeffs;
+            int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi, j);
+            if(!result) {
+                cout << "ohno didn't find a database entry that we were expecting." << endl;
+            }
+            coeff_table[make_pair(chi, j)] = coeffs;
+        }
+    }
 
     DirichletGroup G(level);
     while(chi_list.size() > 0) {
@@ -477,15 +509,18 @@ int main(int argc, char ** argv) {
                 if(level == 1) chi_inverse = 1;
                 for(int j = 0; j < dimension; j++) {
                     if(chi_number <= chi_inverse) {
-                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
+                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
+                        coeffs = coeff_table[make_pair(chi_number, j)];
                         acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
                     }
                     else {
-                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
+                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
+                        coeffs = coeff_table[make_pair(chi_inverse, j)];
                         acb_conj(coeffs + k - 1, coeffs + k - 1);
                         acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
+                        acb_conj(coeffs + k - 1, coeffs + k - 1);
                     }
-                    _acb_vec_clear(coeffs, header.ncoeffs);
+                    //_acb_vec_clear(coeffs, header.ncoeffs);
                 }
             }
             unique_eigenvalues = true;
@@ -529,15 +564,18 @@ int main(int argc, char ** argv) {
                 if(level == 1) chi_inverse = 1;
                 for(int j = 0; j < dimension; j++) {
                     if(chi_number <= chi_inverse) {
-                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
+                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
+                        coeffs = coeff_table[make_pair(chi_number, j)];
                         acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
                     }
                     else {
-                        int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
+                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
+                        coeffs = coeff_table[make_pair(chi_inverse, j)];
                         acb_conj(coeffs + k - 1, coeffs + k - 1);
                         acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
+                        acb_conj(coeffs + k - 1, coeffs + k - 1);
                     }
-                    _acb_vec_clear(coeffs, header.ncoeffs);
+                    //_acb_vec_clear(coeffs, header.ncoeffs);
                 }
             }
             unique_eigenvalues = true;
@@ -655,24 +693,8 @@ int main(int argc, char ** argv) {
         bool matched_all_roots = false;
         int * matches = new int[full_dimension];
         if(nfactors == 1) {
-            for(int k = 0; k < full_dimension; k++) matches[k] = 1;
+            for(int k = 0; k < full_dimension; k++) matches[k] = 0;
             matched_all_roots = true;
-        }
-        if(!matched_all_roots && single_operator) {
-            cout << "single hecke operator, so attempting gcd trick." << endl;
-            long gcd_prec = 4*(max_coefficient_bits + full_dimension + 100);
-            while(!matched_all_roots && gcd_prec < 5000000) {
-                cout << "trying gcd match with precsion " << gcd_prec << endl;
-                matched_all_roots =  match_eigenvalues_rotate_gcd(matches,
-                                         fmpz_factors,
-                                         nfactors,
-                                         eigenvalues,
-                                         full_dimension,
-                                         character_value_order,
-                                         gcd_prec);
-                gcd_prec = 2*gcd_prec;
-            }
-
         }
 
         if(!matched_all_roots) {
@@ -797,6 +819,23 @@ int main(int argc, char ** argv) {
             }
         }
 
+        if(!matched_all_roots && single_operator) {
+            cout << "single hecke operator, so attempting gcd trick." << endl;
+            long gcd_prec = 4*(max_coefficient_bits + full_dimension + 100);
+            while(!matched_all_roots && gcd_prec < 5000000) {
+                cout << "trying gcd match with precsion " << gcd_prec << endl;
+                matched_all_roots =  match_eigenvalues_rotate_gcd(matches,
+                                         fmpz_factors,
+                                         nfactors,
+                                         eigenvalues,
+                                         full_dimension,
+                                         character_value_order,
+                                         gcd_prec);
+                gcd_prec = 2*gcd_prec;
+            }
+
+        }
+
         if(!matched_all_roots) {
             cout << "ohno we couldn't match all the eigenvalues to irreducible factors." << endl;
         }
@@ -804,6 +843,45 @@ int main(int argc, char ** argv) {
         //for(int k = 0; k < full_dimension; k++) {
         //    if(matches[k] == -1) cout << "ohno2" << endl;
         //}
+
+        cout << "checking traces to make sure that they are integers" << endl;
+        for(int l = 0; l < nfactors; l++) {
+            cout << l;
+            arb_ptr traces = _arb_vec_init(100);
+            for(int k = 0; k < full_dimension; k++) {
+                if(matches[k] == l) {
+                    int chi = orbit[k/dimension];
+                    int chi_inverse = InvMod(chi, level);
+                    if(level == 1) chi_inverse = 1;
+                    int j = k % dimension;
+                    cout << " " << chi << "." << j;
+                    acb_ptr coeffs;
+                    if(chi <= chi_inverse) {
+                        coeffs = coeff_table[make_pair(chi, j)];
+                    }
+                    else {
+                        coeffs = coeff_table[make_pair(chi_inverse, j)];
+                    }
+                    for(int n = 0; n < 100; n++) {
+                        arb_add(traces + n, traces + n, acb_realref(coeffs + n), prec);
+                    }
+                }
+            }
+            cout << endl;
+            fmpz_t t;
+            fmpz_init(t);
+            for(int n = 0; n < 100; n++) {
+                if(!arb_get_unique_fmpz(t, traces + n)) {
+                    cout << "ohno a trace was not an integer" << endl;
+                }
+                else {
+                    cout << t << " ";
+                }
+            }
+            cout << endl;
+            fmpz_clear(t);
+            _arb_vec_clear(traces, 100);
+        }
 
         // All went well.
         // Now to just record all the information we just computed...
