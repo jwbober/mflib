@@ -288,15 +288,15 @@ bool match_eigenvalues_rotate_gcd(int * res,
             acb_div_si(z,z,order,prec);
             acb_exp_pi_i(z,z,prec);
             for (i=0;i<npolys;i++) {
-                cout << order << endl;
-                fmpz_poly_print_pretty(poly + i, "x");
-                cout  << endl;
+                //cout << order << endl;
+                //fmpz_poly_print_pretty(poly + i, "x");
+                //cout  << endl;
                 twist_poly(f[i],g,poly + i,u,2*order, prec);
-                arb_poly_printd(f[i], 10);
-                cout << endl;
+                //arb_poly_printd(f[i], 10);
+                //cout << endl;
                 arb_poly_printd(g, 10);
-                cout << endl;
-                cout << endl;
+                //cout << endl;
+                //cout << endl;
                 // It may be the case that f[i] or g is zero, for example when all the
                 // roots or already real, or in a more complicated exmaple, when the input
                 // polynomial is something like x^4 + 100.
