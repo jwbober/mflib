@@ -367,6 +367,134 @@ cleanup:
     return retval;
 }
 
+string format_hecke_operator(const vector<int> &hecke_operator) {
+    stringstream ss;
+    bool anything_so_far = false;
+    for(int k = 0; k < hecke_operator.size(); k++) {
+        int c = hecke_operator[k];
+        if(c == 0) continue;
+        if(anything_so_far) ss << " + ";
+        if(c != 1) ss << c << ".";
+        ss << "T" << k + 2;
+        anything_so_far = true;
+    }
+    return ss.str();
+}
+
+int find_unique_eigenvalues(vector<int> &hecke_operator,
+                            acb_ptr eigenvalues,
+                            const int dimension,
+                            const int full_dimension,
+                            const unordered_map<pair<int,int>, acb_ptr, pair_hash, pair_equal> &coeff_table,
+                            const vector<int> &chiorbit,
+                            const int level,
+                            const bool require_single_operator,
+                            const int max_operator,
+                            slong prec) {
+    hecke_operator.clear();
+    for(int k = 0; k < full_dimension; k++) {
+        acb_zero(eigenvalues + k);
+    }
+    bool unique_eigenvalues = false;
+    int k = 2;
+    while(!unique_eigenvalues && (k <= max_operator)) {
+        // we sometimes really prefer to compute the minimal polynomial of just
+        // one hecke-eigenvalue, so we might try that first.
+
+        if(require_single_operator) {
+            while(GCD(k, level) != 1) {
+                hecke_operator.push_back(0);
+                k++;
+            }
+            hecke_operator.push_back(1);
+        }
+        else {
+            hecke_operator.push_back(k - 1);
+        }
+        cout << "Trying Hecke operator " << format_hecke_operator(hecke_operator) << endl;
+        for(int l = 0; l < chiorbit.size(); l++) {
+            int chi_number = chiorbit[l];
+            int chi_inverse = InvMod(chi_number, level);
+            if(level == 1) chi_inverse = 1;
+            for(int j = 0; j < dimension; j++) {
+                if(chi_number <= chi_inverse) {
+                    acb_ptr coeffs = coeff_table.at(make_pair(chi_number, j));
+                    if(require_single_operator)
+                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
+                    else
+                        acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
+                }
+                else {
+                    acb_ptr coeffs = coeff_table.at(make_pair(chi_inverse, j));
+                    acb_conj(coeffs + k - 1, coeffs + k - 1);
+                    if(require_single_operator) {
+                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
+                    }
+                    else {
+                        acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
+                    }
+                    acb_conj(coeffs + k - 1, coeffs + k - 1);
+                }
+            }
+        }
+        unique_eigenvalues = true;
+        for(int n = 0; n < dimension * chiorbit.size(); n++) {
+            for(int m = n + 1; m < dimension * chiorbit.size(); m++) {
+                if(acb_overlaps(eigenvalues + n, eigenvalues + m)) {
+                    unique_eigenvalues = false;
+                    break;
+                }
+            }
+            if(!unique_eigenvalues && require_single_operator) {
+                hecke_operator.pop_back();
+                hecke_operator.push_back(0);
+                break;
+            }
+        }
+        k++;
+    }
+    if(unique_eigenvalues) {
+        return k - 1;
+    }
+    hecke_operator.clear();
+    return 0;
+}
+
+int get_integral_heckepoly(fmpz_poly_t zheckepoly, acb_poly_t heckepoly, int level, int weight, int chi_number, const vector<int> &hecke_operator, slong prec) {
+    for(int k = 0; k <= acb_poly_degree(heckepoly); k++) {
+        arb_zero(acb_imagref(acb_poly_get_coeff_ptr(heckepoly, k)));
+    }
+    if(!acb_poly_get_unique_fmpz_poly(zheckepoly, heckepoly)) {
+        // we're going to have to up the accuracy with a mod p computation
+        cout << "doing mod p computations to increase hecke polynomial precision" << endl;
+        arb_t max_error, r;
+        arb_init(max_error);
+        arb_init(r);
+        arb_zero(max_error);
+        for(int k = 0; k < acb_poly_degree(heckepoly); k++) {
+            arb_get_rad_arb(r, acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)));
+            if(arb_lt(max_error, r)) {
+                arb_set(max_error, r);
+            }
+        }
+        fmpz_t modular_precision;
+        fmpz_init(modular_precision);
+
+        arb_mul_2exp_si(max_error, max_error, 1);
+        arb_get_ubound_fmpz(modular_precision, max_error, prec);
+        fmpz_poly_t heckepoly_modular_approx;
+        fmpz_poly_init(heckepoly_modular_approx);
+        int result = hecke_polynomial_modular_approximation(heckepoly_modular_approx, level, weight, chi_number, hecke_operator, modular_precision);
+        if(!result) return 0;
+        result = acb_poly_get_unique_fmpz_poly_modular(zheckepoly, heckepoly, heckepoly_modular_approx, modular_precision);
+        return result;
+    }
+    else {
+        return 1;
+    }
+}
+
+
 int main(int argc, char ** argv) {
     if(argc < 5) {
         cout << argv[0] << usage;
@@ -484,115 +612,20 @@ int main(int argc, char ** argv) {
         int full_dimension = orbit.size() * dimension;
         //prec = full_dimension * 300;
         acb_ptr eigenvalues = _acb_vec_init(full_dimension);
-        bool unique_eigenvalues = false;
-        int k = 2;
-        bool single_operator = false;
-        int operator_number = 0;  // the number of the hecke operator used if we
-                                  // can get away with using a single hecke operator
 
-        int character_value_order = 0;  // the (multiplicative) order of the value of
-                                        // Dirichlet character when we are using a
-                                        // single Hecke operator.
+        int unique_eigenvalues = find_unique_eigenvalues(hecke_operator,
+                                        eigenvalues,
+                                        dimension,
+                                        full_dimension,
+                                        coeff_table,
+                                        orbit,
+                                        level,
+                                        false, // require single operator
+                                        100, // max operator
+                                        prec);
 
-        while(!unique_eigenvalues && (k < 30)) {
-            // we really prefer to compute the minimal polynomial of just one hecke-eigenvalue,
-            // for a hecke operator coprime to the level, so let's try that first.
-            while(GCD(k, level) != 1) {
-                hecke_operator.push_back(0);
-                k++;
-            }
-            cout << "Trying Hecke operator " << k << endl;
-            hecke_operator.push_back(1);
-            for(int l = 0; l < orbit.size(); l++) {
-                long chi_number = orbit[l];
-                long chi_inverse = InvMod(chi_number, level);
-                if(level == 1) chi_inverse = 1;
-                for(int j = 0; j < dimension; j++) {
-                    if(chi_number <= chi_inverse) {
-                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
-                        coeffs = coeff_table[make_pair(chi_number, j)];
-                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
-                    }
-                    else {
-                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
-                        coeffs = coeff_table[make_pair(chi_inverse, j)];
-                        acb_conj(coeffs + k - 1, coeffs + k - 1);
-                        acb_set(eigenvalues + l * dimension + j, coeffs + k - 1);
-                        acb_conj(coeffs + k - 1, coeffs + k - 1);
-                    }
-                    //_acb_vec_clear(coeffs, header.ncoeffs);
-                }
-            }
-            unique_eigenvalues = true;
-            operator_number = k;
-            for(int n = 0; n < dimension * orbit.size(); n++) {
-                for(int m = n + 1; m < dimension * orbit.size(); m++) {
-                    if(acb_overlaps(eigenvalues + n, eigenvalues + m)) {
-                        unique_eigenvalues = false;
-                        break;
-                    }
-                }
-                if(!unique_eigenvalues) {
-                    hecke_operator.pop_back();
-                    hecke_operator.push_back(0);
-                    break;
-                }
-            }
-            k++;
 
-        }
-
-        if(!unique_eigenvalues) {
-            for(int k = 0; k < full_dimension; k++) {
-                acb_zero(eigenvalues + k);
-            }
-            hecke_operator.clear();
-            k = 2;
-        }
-        else {
-            single_operator = true;
-            long a = G.exponent(chi_number, operator_number);
-            character_value_order = G.phi_q/GCD(a, G.phi_q);
-            cout << character_value_order << endl;
-        }
-
-        while(!unique_eigenvalues) {
-            hecke_operator.push_back(k - 1);
-            for(int l = 0; l < orbit.size(); l++) {
-                long chi_number = orbit[l];
-                long chi_inverse = InvMod(chi_number, level);
-                if(level == 1) chi_inverse = 1;
-                for(int j = 0; j < dimension; j++) {
-                    if(chi_number <= chi_inverse) {
-                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_number, j);
-                        coeffs = coeff_table[make_pair(chi_number, j)];
-                        acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
-                    }
-                    else {
-                        //int result = mfdb_get_entry(db, &header, &coeffs, level, weight, chi_inverse, j);
-                        coeffs = coeff_table[make_pair(chi_inverse, j)];
-                        acb_conj(coeffs + k - 1, coeffs + k - 1);
-                        acb_addmul_ui(eigenvalues + l * dimension + j, coeffs + k - 1, k - 1, prec);
-                        acb_conj(coeffs + k - 1, coeffs + k - 1);
-                    }
-                    //_acb_vec_clear(coeffs, header.ncoeffs);
-                }
-            }
-            unique_eigenvalues = true;
-            for(int n = 0; n < dimension * orbit.size(); n++) {
-                for(int m = n + 1; m < dimension * orbit.size(); m++) {
-                    if(acb_overlaps(eigenvalues + n, eigenvalues + m)) {
-                        unique_eigenvalues = false;
-                        break;
-                    }
-                }
-                if(!unique_eigenvalues) break;
-            }
-            k++;
-        }
-        cout << "for character " << chi_number << " using hecke operator";
-        for(int k : hecke_operator) cout << " " << k;
-        cout << endl;
+        cout << "for character " << chi_number << " trying hecke operator " << format_hecke_operator(hecke_operator) << endl;
 
         acb_poly_t heckepoly;
         acb_poly_init(heckepoly);
@@ -602,44 +635,10 @@ int main(int argc, char ** argv) {
 
         fmpz_poly_t zheckepoly;
         fmpz_poly_init(zheckepoly);
-        for(int k = 0; k <= full_dimension; k++) {
-            arb_zero(acb_imagref(acb_poly_get_coeff_ptr(heckepoly, k)));
-        }
-        if(!acb_poly_get_unique_fmpz_poly(zheckepoly, heckepoly)) {
-            // we're going to have to up the accuracy with a mod p computation
-            cout << "doing mod p computations to increase hecke polynomial precision" << endl;
-            arb_t max_error, r;
-            arb_init(max_error);
-            arb_init(r);
-            arb_zero(max_error);
-            for(int k = 0; k < full_dimension; k++) {
-                arb_get_rad_arb(r, acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)));
-                //cout << r << " " << acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)) << endl;
-                //arb_printd(r, 10);
-                //cout << endl;
-                //arb_printd(acb_realref(acb_poly_get_coeff_ptr(heckepoly, k)), 10);
-                //cout << endl;
-                if(arb_lt(max_error, r)) {
-                    arb_set(max_error, r);
-                }
-            }
-            fmpz_t modular_precision;
-            fmpz_init(modular_precision);
 
-            arb_mul_2exp_si(max_error, max_error, 1);
-            arb_get_ubound_fmpz(modular_precision, max_error, prec);
-            fmpz_poly_t heckepoly_modular_approx;
-            fmpz_poly_init(heckepoly_modular_approx);
-            int result = hecke_polynomial_modular_approximation(heckepoly_modular_approx, level, weight, chi_number, hecke_operator, modular_precision);
-            if(result == 0) {
-                cout << "ohno" << endl;
-                continue;
-            }
-            result = acb_poly_get_unique_fmpz_poly_modular(zheckepoly, heckepoly, heckepoly_modular_approx, modular_precision);
-            if(result == 0) {
-                cout << "ohno. something went wrong with modular approximation." << endl;
-                continue;
-            }
+        if(!get_integral_heckepoly(zheckepoly, heckepoly, level, weight, chi_number, hecke_operator, prec)) {
+            cout << "ohno something went wrong getting the hecke polynomial." << endl;
+            continue;
         }
 
         NTL::ZZ content;
@@ -656,18 +655,11 @@ int main(int argc, char ** argv) {
 
         acb_t t1;
         acb_init(t1);
-        //for(int l = 0; l < factors.length(); l++) {
-        //    cout << deg(factors[l].a);
-        //    if(l < factors.length() - 1) cout << " ";
-        //}
-        //cout << endl;
 
         fmpz_poly_struct * fmpz_factors = new fmpz_poly_struct[nfactors];
         long * evaluation_bits = new long[nfactors];
         long max_coefficient_bits = 0;
         int * roots_found = new int[nfactors];
-
-
 
         for(int l = 0; l < nfactors; l++) {
             fmpz_poly_struct * g = fmpz_factors + l;
@@ -701,10 +693,10 @@ int main(int argc, char ** argv) {
             for(int k = 0; k < full_dimension; k++) {
                 matches[k] = -1;
             }
-        // we first try to evaluate each of the polynomials as every possible
-        // root. for each polynomial, if we find exactly the right number of
-        // possible roots, then we know that we found them all, and we are
-        // finished with that polynomial now.
+            // we first try to evaluate each of the polynomials as every possible
+            // root. for each polynomial, if we find exactly the right number of
+            // possible roots, then we know that we found them all, and we are
+            // finished with that polynomial now.
             cout << "in root matching phase 1" << endl;
             matched_all_roots = true;
 
@@ -818,6 +810,31 @@ int main(int argc, char ** argv) {
                 }
             }
         }
+
+        bool single_operator = false;
+        if(unique_eigenvalues == 2) {
+            single_operator = true;
+        }
+        else if(!matched_all_roots) {
+            // trying to find single hecke operator with unique eigenvalue
+            unique_eigenvalues = find_unique_eigenvalues(hecke_operator,
+                                        eigenvalues,
+                                        dimension,
+                                        full_dimension,
+                                        coeff_table,
+                                        orbit,
+                                        level,
+                                        true, // require single operator
+                                        100, // max operator
+                                        prec);
+            if(unique_eigenvalues != 0) {
+                single_operator = true;
+            }
+        }
+
+        long a = G.exponent(chi_number, unique_eigenvalues);
+        int character_value_order = G.phi_q/GCD(a, G.phi_q);
+        cout << character_value_order << endl;
 
         if(!matched_all_roots && single_operator) {
             cout << "single hecke operator, so attempting gcd trick." << endl;
