@@ -26,6 +26,8 @@
 #include "arb-extras.h"
 #include "flint-extras.h"
 
+#include "ThreadPool/ThreadPool.h"
+
 using namespace std;
 
 const char * usage =
@@ -705,7 +707,41 @@ int main(int argc, char ** argv) {
                 fmpz_poly_struct * g = fmpz_factors + l;
                 if(roots_found[l] == fmpz_poly_degree(g)) continue;
 
+                acb_ptr poly_values = _acb_vec_init(full_dimension);
+                ThreadPool * pool = new ThreadPool(4);
+                //thread * threads = new thread[full_dimension];
+                for(int k = 0; k < full_dimension; k++) {
+                    if(matches[k] != -1) continue;
+                    //threads[k] = thread(arb_fmpz_poly_evaluate_acb, poly_values + k, g, eigenvalues + k, evaluation_bits[l]);
+                    pool->enqueue(arb_fmpz_poly_evaluate_acb, poly_values + k, g, eigenvalues + k, evaluation_bits[l]);
+
+                }
+                //for(int k = 0; k < full_dimension; k++) {
+                //    if(matches[k] != -1) continue;
+                //    cout << poly_values + k << endl;
+                //    threads[k].join();
+                //}
+                //delete [] threads;
+                //this_thread::sleep_for(chrono::seconds(2));
+                //pool.~ThreadPool();
+                delete pool;
+
                 vector<int> possible_roots;
+
+                for(int k = 0; k < full_dimension; k++) {
+                    if(matches[k] != -1) continue;
+                    cout << "evaluating polynomial " << l << " (degree " << fmpz_poly_degree(g) << ") at root " << k;
+                    if(acb_contains_zero(poly_values + k)) {
+                        possible_root_table[k + full_dimension*l] = true;
+                        possible_roots.push_back(k);
+                        cout << " possible zero: " << possible_roots.size() << " out of " << fmpz_poly_degree(g) << " roots found." << endl;
+                    }
+                    else {
+                        cout << " not a zero" << endl;
+                    }
+                }
+                _acb_vec_clear(poly_values, full_dimension);
+                /*
                 for(int k = 0; k < full_dimension; k++) {
                     if(matches[k] != -1) continue; // we only set matches[k] if we are completely
                                                    // certain that eigenvalues[k] is a root of that
@@ -727,6 +763,7 @@ int main(int argc, char ** argv) {
                         cout << " not a zero" << endl;
                     }
                 }
+                */
                 if(possible_roots.size() == fmpz_poly_degree(g)) {
                     cout << "found all roots for polynomial " << l << endl;
                     for(int k : possible_roots) {
