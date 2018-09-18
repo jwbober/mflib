@@ -30,8 +30,10 @@
 
 using namespace std;
 
+static int nthreads = 1;
+
 const char * usage =
-" leve weight mfdb polydb [overwrite]\n"
+" level weight mfdb polydb [overwrite] [nthreads]\n"
 "\n"
 "Given an input file with embeddings of newforms, compute the decomposition\n"
 "of each character space into Galois orbits over Q and put this information\n"
@@ -135,15 +137,18 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
         }
         //nmod_poly_init(f, p);
 
-        std::thread * threads = new std::thread[orbitsize];
+        //std::thread * threads = new std::thread[orbitsize];
         //for(long m : orbit) {
+        ThreadPool * pool = new ThreadPool(min(nthreads, orbitsize));
         for(int k = 0; k < orbitsize; k++) {
             long m = orbit[k];
             chi = G.character(m);
             cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
             p = S->p;
 
-            threads[k] = std::thread( [local_polys, k, S, p, &hecke_operator](){
+
+            pool->enqueue( [local_polys, k, S, p, &hecke_operator](){
+            //threads[k] = std::thread( [local_polys, k, S, p, &hecke_operator](){
                 nmod_mat_t hecke_mat;
                 nmod_mat_init(hecke_mat, S->new_dimension(), S->new_dimension(), p);
                 for(int l = 2; l < hecke_operator.size() + 2; l++) {
@@ -159,14 +164,15 @@ int hecke_polynomial_modular_approximation(fmpz_poly_t out, int level, int weigh
                 nmod_mat_clear(hecke_mat);
                 });
         }
+        delete pool;
         for(int k = 0; k < orbitsize; k++) {
-            threads[k].join();
+            // threads[k].join();
             nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, local_polys[k]);
             nmod_poly_clear(local_polys[k]);
         }
 
         delete [] local_polys;
-        delete [] threads;
+        //delete [] threads;
         int degree = nmod_poly_degree(hecke_poly_modp);
         for(int k = 0; k <= degree; k++) {
             fmpz_poly_get_coeff_fmpz(a, hecke1, k);
@@ -548,11 +554,16 @@ int main(int argc, char ** argv) {
     polydb_init(polydb);
 
     int overwrite = 0;
-    if(argc > 6) {
-        overwrite = atoi(argv[6]);
+    if(argc > 5) {
+        overwrite = atoi(argv[5]);
     }
     if(overwrite) {
+        cout << "deleting old database entries" << endl;
         sqlite3_exec(polydb, "DELETE FROM heckepolys;", NULL, 0, NULL);
+    }
+    if(argc > 6) {
+        nthreads = atoi(argv[6]);
+        cout << "setting nthreads = " << nthreads << endl;
     }
 
     mfheader * headers;
@@ -708,7 +719,7 @@ int main(int argc, char ** argv) {
                 if(roots_found[l] == fmpz_poly_degree(g)) continue;
 
                 acb_ptr poly_values = _acb_vec_init(full_dimension);
-                ThreadPool * pool = new ThreadPool(4);
+                ThreadPool * pool = new ThreadPool(nthreads);
                 //thread * threads = new thread[full_dimension];
                 for(int k = 0; k < full_dimension; k++) {
                     if(matches[k] != -1) continue;
@@ -977,5 +988,6 @@ int main(int argc, char ** argv) {
     }
 
     flint_cleanup();
+    cout << "main function exiting normally." << endl;
     return 0;
 }
