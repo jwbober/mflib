@@ -261,6 +261,14 @@ static int phase(acb_srcptr a,int order, slong prec) {
 }
 
 
+int fmpz_vec_cmp(fmpz * x, fmpz * y, slong len) {
+    for(int k = 0; k < len; k++) {
+        int z = fmpz_cmp(x + k, y + k);
+        if(z != 0) return z;
+    }
+    return 0;
+}
+
 bool match_eigenvalues_rotate_gcd(int * res,
                                  const fmpz_poly_struct * poly,
                                  int npolys,
@@ -720,28 +728,19 @@ int main(int argc, char ** argv) {
 
                 acb_ptr poly_values = _acb_vec_init(full_dimension);
                 ThreadPool * pool = new ThreadPool(nthreads);
-                //thread * threads = new thread[full_dimension];
                 for(int k = 0; k < full_dimension; k++) {
                     if(matches[k] != -1) continue;
-                    //threads[k] = thread(arb_fmpz_poly_evaluate_acb, poly_values + k, g, eigenvalues + k, evaluation_bits[l]);
                     pool->enqueue(arb_fmpz_poly_evaluate_acb, poly_values + k, g, eigenvalues + k, evaluation_bits[l]);
 
                 }
-                //for(int k = 0; k < full_dimension; k++) {
-                //    if(matches[k] != -1) continue;
-                //    cout << poly_values + k << endl;
-                //    threads[k].join();
-                //}
-                //delete [] threads;
-                //this_thread::sleep_for(chrono::seconds(2));
-                //pool.~ThreadPool();
+
                 delete pool;
 
                 vector<int> possible_roots;
 
                 for(int k = 0; k < full_dimension; k++) {
                     if(matches[k] != -1) continue;
-                    cout << "evaluating polynomial " << l << " (degree " << fmpz_poly_degree(g) << ") at root " << k;
+                    cout << "checking polynomial " << l << " (degree " << fmpz_poly_degree(g) << ") at root " << k;
                     if(acb_contains_zero(poly_values + k)) {
                         possible_root_table[k + full_dimension*l] = true;
                         possible_roots.push_back(k);
@@ -752,29 +751,7 @@ int main(int argc, char ** argv) {
                     }
                 }
                 _acb_vec_clear(poly_values, full_dimension);
-                /*
-                for(int k = 0; k < full_dimension; k++) {
-                    if(matches[k] != -1) continue; // we only set matches[k] if we are completely
-                                                   // certain that eigenvalues[k] is a root of that
-                                                   // factor, which means that it can't be a root
-                                                   // of a different factor
-                    cout << clock() << " evaluating polynomial " << l << " (degree " << fmpz_poly_degree(g) << ") at root " << k;
-                    arb_fmpz_poly_evaluate_acb(t1, g, eigenvalues + k, evaluation_bits[l]);
-                    if(acb_contains_zero(t1)) {
-                        possible_root_table[k + full_dimension*l] = true;
-                        possible_roots.push_back(k);
-                        cout << " possible zero: " << possible_roots.size() << " out of " << fmpz_poly_degree(g) << " roots found." << endl;
-                        //if(matches[k] != -1) {
-                        //    cout << "ohno1" << endl;
-                        //    continue;
-                        //}
-                        //matches[k] = l;
-                    }
-                    else {
-                        cout << " not a zero" << endl;
-                    }
-                }
-                */
+
                 if(possible_roots.size() == fmpz_poly_degree(g)) {
                     cout << "found all roots for polynomial " << l << endl;
                     for(int k : possible_roots) {
@@ -865,6 +842,7 @@ int main(int argc, char ** argv) {
         }
         else if(!matched_all_roots) {
             // trying to find single hecke operator with unique eigenvalue
+            cout << "Trying harder to find a single hecke operator with squarefree characteristic polynomial." << endl;
             unique_eigenvalues = find_unique_eigenvalues(hecke_operator,
                                         eigenvalues,
                                         dimension,
@@ -901,17 +879,16 @@ int main(int argc, char ** argv) {
 
         }
 
+        fmpz ** ztraces;
         if(!matched_all_roots) {
             cout << "ohno we couldn't match all the eigenvalues to irreducible factors." << endl;
+            goto cleanup;
         }
 
-        //for(int k = 0; k < full_dimension; k++) {
-        //    if(matches[k] == -1) cout << "ohno2" << endl;
-        //}
-
         cout << "checking traces to make sure that they are integers" << endl;
+        ztraces = new fmpz*[nfactors];
         for(int l = 0; l < nfactors; l++) {
-            cout << l;
+            //cout << l;
             arb_ptr traces = _arb_vec_init(100);
             for(int k = 0; k < full_dimension; k++) {
                 if(matches[k] == l) {
@@ -919,7 +896,7 @@ int main(int argc, char ** argv) {
                     int chi_inverse = InvMod(chi, level);
                     if(level == 1) chi_inverse = 1;
                     int j = k % dimension;
-                    cout << " " << chi << "." << j;
+                    //cout << " " << chi << "." << j;
                     acb_ptr coeffs;
                     if(chi <= chi_inverse) {
                         coeffs = coeff_table[make_pair(chi, j)];
@@ -932,20 +909,46 @@ int main(int argc, char ** argv) {
                     }
                 }
             }
-            cout << endl;
-            fmpz_t t;
-            fmpz_init(t);
+            //fmpz_t t;
+            //fmpz_init(t);
+            ztraces[l] = _fmpz_vec_init(100);
             for(int n = 0; n < 100; n++) {
-                if(!arb_get_unique_fmpz(t, traces + n)) {
+                if(!arb_get_unique_fmpz(ztraces[l] + n, traces + n)) {
                     cout << "ohno a trace was not an integer" << endl;
+                    cout << "this is not supposed to happen (but maybe we are not using enough precision)" << endl;
+                    return 1;
                 }
                 else {
-                    cout << t << " ";
+                    cout << ztraces[l] + n << " ";
                 }
             }
             cout << endl;
-            fmpz_clear(t);
             _arb_vec_clear(traces, 100);
+        }
+
+        // very simple sort on the traces and the factors...
+        for(int l1 = 0; l1 < nfactors; l1++) {
+            for(int l2 = l1 + 1; l2 < nfactors; l2++) {
+                int z = fmpz_vec_cmp(ztraces[l1], ztraces[l2], 100);
+                if(z == 0) {
+                    cout << "ohno the first 100 traces match. continuing anyway" << endl;
+                }
+                else if (z > 0) {
+                //if(fmpz_vec_cmp(ztraces[l], ztraces
+                fmpz * tmp = ztraces[l2];
+                ztraces[l2] = ztraces[l1];
+                ztraces[l1] = tmp;
+                fmpz_poly_swap(fmpz_factors + l1, fmpz_factors + l2);
+                }
+            }
+        }
+
+        for(int l = 0; l < nfactors; l++) {
+            cout << l << ":";
+            for(int k = 0; k < 100; k++) {
+                cout << " " << ztraces[l] + k;
+            }
+            cout << endl;
         }
 
         // All went well.
@@ -953,7 +956,8 @@ int main(int argc, char ** argv) {
 
         sqlite3_exec(polydb, "BEGIN TRANSACTION", NULL, NULL, NULL);
         for(int l = 0; l < nfactors; l++) {
-            fmpz_poly_set_ZZX(g, factors[l].a);
+            fmpz_poly_struct * g = fmpz_factors + l;
+            //fmpz_poly_set_ZZX(g, factors[l].a);
             fmpz_poly_print_pretty(g, "x");
             vector<int> mforbit;
             if(roots_found[l] == fmpz_poly_degree(g)) {
@@ -971,7 +975,12 @@ int main(int argc, char ** argv) {
         }
         sqlite3_exec(polydb, "END TRANSACTION", NULL, NULL, NULL);
 
+        for(int l = 0; l < nfactors; l++) {
+            _fmpz_vec_clear(ztraces[l], 100);
+        }
+        delete [] ztraces;
 
+cleanup:
 
         fmpz_poly_clear(g);
 

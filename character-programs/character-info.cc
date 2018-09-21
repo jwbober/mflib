@@ -51,7 +51,7 @@ int main(int argc, char ** argv) {
         print_character_info(G, n);
     }
     else {
-        auto orbits = G.galois_orbits();
+        auto orbits = G.ordered_galois_orbits();
         cout << "For modulus " << q << ", there are " << orbits.size() << " Galois orbits." << endl;
         cout << "Printing out some information about a representative from each orbit:" << endl;
         for(auto orbit : orbits) {

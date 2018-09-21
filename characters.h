@@ -631,7 +631,7 @@ public:
 
         dft_dimension = k + even_dimension;
         dft_lengths = new int[dft_dimension];
-        
+
         if(even_dimension >= 1)
             dft_lengths[0] = 2;
         if(even_dimension == 2)
@@ -717,6 +717,67 @@ public:
         }
         return orbits;
     }
+
+    std::vector< std::set<long> > ordered_galois_orbits() {
+        std::vector< std::set<long> > orbits;
+        std::vector< long > orders;
+        std::set<long> not_in_orbit_yet;
+        for(long n = 1; n < q; n++) {
+            if(GCD(n, q) == 1) not_in_orbit_yet.insert(n);
+        }
+        if(q == 1) not_in_orbit_yet.insert(1);
+        while(not_in_orbit_yet.size() > 0) {
+            long next = *(not_in_orbit_yet.begin());
+            orders.push_back(order_mod(next, q));
+            auto o = character(next).galois_orbit();
+            orbits.push_back(o);
+            for(long n : o) {
+                not_in_orbit_yet.erase(n);
+            }
+        }
+
+        // now we order the orbits.
+        for(int k1 = 0; k1 < orbits.size(); k1++) {
+            for(int k2 = k1 + 1; k2 < orbits.size(); k2++) {
+                if(orders[k1] > orders[k2]) {
+                    long z = orders[k1];
+                    orders[k1] = orders[k2];
+                    orders[k2] = z;
+
+                    orbits[k1].swap(orbits[k2]);
+                }
+                else if(orders[k1] == orders[k2]) {
+                    long t1 = 0; long t2 = 0;
+                    long k = 2;
+                    while(t1 == t2 && (k < q)) {
+                        std::complex<double> z1 = 0;
+                        for(long n : orbits[k1]) {
+                            z1 = z1 + chi(n,k);
+                        }
+                        std::complex<double> z2 = 0;
+                        for(long n : orbits[k2]) {
+                            z2 = z2 + chi(n,k);
+                        }
+                        t1 = (long)std::round(z1.real());
+                        t1 = (t1 * q)/(long)orbits[k1].size();
+                        t2 = (long)std::round(z2.real());
+                        t2 = (t2 * q)/(long)orbits[k2].size();
+                        k++;
+                        while(GCD(k,q) != 1) k++;
+                    }
+                    if(t1 == t2) {
+                        std::cout << "Warning. Can't distinguish character orbits. Didn't expect this to happen" << std::endl;
+                        std::cerr << "Warning. Can't distinguish character orbits. Didn't expect this to happen" << std::endl;
+                    }
+                    if(t2 < t1) {
+                        orbits[k1].swap(orbits[k2]);
+                    }
+                }
+            }
+        }
+        return orbits;
+    }
+
 };
 
 inline long DirichletGroup::index_from_primitive_character(long q0, long primitive_index) {
@@ -895,7 +956,7 @@ inline std::complex<double> DirichletCharacter::max(long * index) {
     // unless index = 0
     //
     // note that *index is always <= (q-1)/2
-    
+
     //if(parent->A[m][0] == -1) {
     //    if(index != 0){
     //        *index = -1;
@@ -1008,7 +1069,7 @@ inline bool DirichletCharacter::is_even() {
     // The evaluation isn't going to be exact, but since the number is just
     // +-1 we can just check which of these it is closest to.
     //
-    
+
     return abs(value(parent->q - 1) - 1.0) < .5;
 }
 
@@ -1148,7 +1209,7 @@ inline void DirichletCharacter::values_mod_p(long & p, long * chi_values) {
             // can p divide phi(N)?...
             // not going to think about
             // that right now.
-    
+
     if( (p - 1) % order != 0) {
         std::cerr << "values_mod_p called with an invalid prime."
              << "p = " << p << std::endl
