@@ -138,14 +138,21 @@ int polydb_insert(  sqlite3 * db,
                     int level,
                     int weight,
                     int chi,
+                    int chiorbit,
                     int whatevernumber,
-                    int labelnumber) {
-    const char * insert_sql = "INSERT INTO heckepolys VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                    int labelnumber,
+                    long ntraces,
+                    fmpz * traces) {
+    const char * insert_sql = "INSERT INTO heckepolys (level, weight, chi, whatevernumber, labelnumber, operator, degree, mforbit, polynomial, chiorbit, traces) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     int degree = fmpz_poly_degree(f);
 
     char * polydata;
     size_t polydatasize;
     x_fmpz_poly_write_raw(&polydata, &polydatasize, f);
+
+    char * tracedata;
+    size_t tracedatasize;
+    x_fmpz_vec_write_raw(&tracedata, &tracedatasize, ntraces, traces);
 
     sqlite3_stmt * insert_stmt;
     sqlite3_prepare_v2(db, insert_sql, -1, &insert_stmt, NULL);
@@ -158,6 +165,8 @@ int polydb_insert(  sqlite3 * db,
     sqlite3_bind_int(insert_stmt, 7, degree);
     sqlite3_bind_blob(insert_stmt, 8, (void *)mforbit, sizeof(int)*orbitsize, SQLITE_TRANSIENT);
     sqlite3_bind_blob(insert_stmt, 9, (void *)polydata, polydatasize, free);
+    sqlite3_bind_int(insert_stmt, 10, chiorbit);
+    sqlite3_bind_blob(insert_stmt, 11, (void *)tracedata, tracedatasize, free);
     sqlite3_step(insert_stmt);
     return sqlite3_finalize(insert_stmt);
 }
@@ -167,10 +176,12 @@ void polydb_init(sqlite3 * db) {
                             "level          INTEGER,"
                             "weight         INTEGER,"
                             "chi            INTEGER,"
+                            "chiorbit       INTEGER,"
                             "whatevernumber INTEGER,"
                             "labelnumber    INTEGER,"
                             "operator       BLOB,"
                             "degree         INTEGER,"
+                            "traces         BLOB,"
                             "mforbit        BLOB,"
                             "polynomial     BLOB);";
 

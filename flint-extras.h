@@ -11,6 +11,7 @@
 
 #include <ostream>
 std::ostream& operator << (std::ostream& out, fmpz_t in);
+std::ostream& operator << (std::ostream& out, fmpz_poly_t in);
 
 extern "C" {
 #endif
@@ -36,6 +37,12 @@ void x_fmpz_poly_read_raw(fmpz_poly_t f, const void * data, size_t datasize);
 // of datasize bytes. (Which was probably written out by x_fmp_poly_write_raw().)
 //
 // If datasize = 0, will probably do nothing at all, I think.
+
+// The following two functions are basically the same as the fmpz_poly_t versions
+// (as in, a vector could be read as a polynomial and a polynomial could be read
+// as a vector).
+void x_fmpz_vec_write_raw(char ** data, size_t * datasize, long len, fmpz * vec);
+void x_fmpz_vec_read_raw(long * len, fmpz ** vec, const void * data, size_t datasize);
 
 
 #ifdef __cplusplus

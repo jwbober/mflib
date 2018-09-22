@@ -133,8 +133,11 @@ int polydb_insert(  sqlite3 * db,
                     int level,
                     int weight,
                     int chi,
+                    int chiorbit,
                     int whatevernumber,
-                    int labelnumber);
+                    int labelnumber,
+                    long ntraces,
+                    fmpz * traces);
 
 void polydb_init(sqlite3 * db);
 

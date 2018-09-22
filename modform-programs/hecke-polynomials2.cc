@@ -510,7 +510,6 @@ int get_integral_heckepoly(fmpz_poly_t zheckepoly, acb_poly_t heckepoly, int lev
     }
 }
 
-
 int main(int argc, char ** argv) {
     if(argc < 5) {
         cout << argv[0] << usage;
@@ -616,6 +615,19 @@ int main(int argc, char ** argv) {
     }
 
     DirichletGroup G(level);
+    int * character_orbit_labels = new int[level];
+    {
+        int k = 0;
+        for(auto S : G.ordered_galois_orbits()) {
+            for(auto chi : S) {
+                character_orbit_labels[chi] = k;
+                cout << chi << " "  << k << endl;
+            }
+            k++;
+        }
+    }
+
+
     while(chi_list.size() > 0) {
         long chi_number = *chi_list.begin();
         DirichletCharacter chi = G.character(chi_number);
@@ -970,7 +982,7 @@ int main(int argc, char ** argv) {
                 }
             }
             polydb_insert(polydb, g, hecke_operator.data(), hecke_operator.size(), mforbit.data(), mforbit.size(),
-                    level, weight, orbit[0], l, 0);
+                    level, weight, orbit[0], character_orbit_labels[orbit[0]], l, l, 100, ztraces[l]);
             cout << endl;
         }
         sqlite3_exec(polydb, "END TRANSACTION", NULL, NULL, NULL);
@@ -997,6 +1009,7 @@ cleanup:
     }
 
     flint_cleanup();
+    delete [] character_orbit_labels;
     cout << "main function exiting normally." << endl;
     return 0;
 }
