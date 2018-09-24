@@ -892,6 +892,7 @@ int main(int argc, char ** argv) {
         }
 
         fmpz ** ztraces;
+        vector<int> * mforbits;
         if(!matched_all_roots) {
             cout << "ohno we couldn't match all the eigenvalues to irreducible factors." << endl;
             goto cleanup;
@@ -938,6 +939,12 @@ int main(int argc, char ** argv) {
             _arb_vec_clear(traces, 100);
         }
 
+        mforbits = new vector<int>[nfactors];
+        for(int k = 0; k < full_dimension; k++) {
+            if(matches[k] >= 0 && matches[k] < nfactors)
+                mforbits[matches[k]].push_back(k);
+        }
+
         // very simple sort on the traces and the factors...
         for(int l1 = 0; l1 < nfactors; l1++) {
             for(int l2 = l1 + 1; l2 < nfactors; l2++) {
@@ -946,11 +953,12 @@ int main(int argc, char ** argv) {
                     cout << "ohno the first 100 traces match. continuing anyway" << endl;
                 }
                 else if (z > 0) {
-                //if(fmpz_vec_cmp(ztraces[l], ztraces
-                fmpz * tmp = ztraces[l2];
-                ztraces[l2] = ztraces[l1];
-                ztraces[l1] = tmp;
-                fmpz_poly_swap(fmpz_factors + l1, fmpz_factors + l2);
+                    //if(fmpz_vec_cmp(ztraces[l], ztraces
+                    fmpz * tmp = ztraces[l2];
+                    ztraces[l2] = ztraces[l1];
+                    ztraces[l1] = tmp;
+                    fmpz_poly_swap(fmpz_factors + l1, fmpz_factors + l2);
+                    mforbits[l1].swap(mforbits[l2]);
                 }
             }
         }
@@ -972,15 +980,19 @@ int main(int argc, char ** argv) {
             //fmpz_poly_set_ZZX(g, factors[l].a);
             fmpz_poly_print_pretty(g, "x");
             vector<int> mforbit;
-            if(roots_found[l] == fmpz_poly_degree(g)) {
-                for(int k = 0; k < full_dimension; k++) {
-                    if(matches[k] == l) {
-                    //    cout << " " << orbit[k/dimension] << '.' << k % dimension;
-                        mforbit.push_back(orbit[k/dimension]);
-                        mforbit.push_back(k % dimension);
-                    }
-                }
+            for(int k : mforbits[l]) {
+                mforbit.push_back(orbit[k/dimension]);
+                mforbit.push_back(k % dimension);
             }
+            //if(roots_found[l] == fmpz_poly_degree(g)) {
+            //   for(int k = 0; k < full_dimension; k++) {
+            //        if(matches[k] == l) {
+                    //    cout << " " << orbit[k/dimension] << '.' << k % dimension;
+            //            mforbit.push_back(orbit[k/dimension]);
+            //            mforbit.push_back(k % dimension);
+            //        }
+            //    }
+            //}
             polydb_insert(polydb, g, hecke_operator.data(), hecke_operator.size(), mforbit.data(), mforbit.size(),
                     level, weight, orbit[0], character_orbit_labels[orbit[0]], l, l, 100, ztraces[l]);
             cout << endl;
