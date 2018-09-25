@@ -9,9 +9,13 @@
 using namespace std;
 
 int main(int argc, char ** argv) {
-    if(argc != 2) {
-        cout << "usage: " << argv[0] << " dbname" << endl;
+    if(argc < 2) {
+        cout << "usage: " << argv[0] << " dbname [fmt]" << endl;
         return 0;
+    }
+    int mfdatafmt = 0;
+    if(argc == 3) {
+        mfdatafmt = 1;
     }
     sqlite3 * db;
     sqlite3_open(argv[1], &db);
@@ -48,11 +52,21 @@ int main(int argc, char ** argv) {
         fmpz * traces;
         x_fmpz_vec_read_raw(&ntraces, &traces, tracedata, tracesize);
 
-        cout << level << " " << weight << " " << chi << " " << chiorbit << " " << labelnumber << ";";
-        for(long k = 0; k < ntraces; k++) {
-            cout << " " << traces + k;
+        if(mfdatafmt) {
+            cout << level << ":" << weight << ":" << chiorbit + 1 << ":[" << traces;
+            for(int k = 1; k < ntraces; k++) {
+                cout << ", " << traces + k;
+            }
+            cout << "]" << endl;
         }
-        cout << "; " << f << endl;
+
+        else {
+            cout << level << " " << weight << " " << chi << " " << chiorbit << " " << labelnumber << ";";
+            for(long k = 0; k < ntraces; k++) {
+                cout << " " << traces + k;
+            }
+            cout << "; " << f << endl;
+        }
 
         _fmpz_vec_clear(traces, ntraces);
         result = sqlite3_step(stmt);
