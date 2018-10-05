@@ -84,6 +84,5 @@ modp_basis
 tmp
 todo
 .d
-bin
 libmodform.a
 *.polydb
