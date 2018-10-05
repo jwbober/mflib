@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "modform_modp.h"
+#include "cuspforms_modp.h"
 #include "classnumbers.h"
 
 using namespace std;

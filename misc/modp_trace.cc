@@ -1,4 +1,4 @@
-#include "modform_modp.h"
+#include "cuspforms_modp.h"
 #include "classnumbers.h"
 
 #include <iostream>
@@ -14,7 +14,6 @@ int main(int argc, char ** argv) {
     int number_of_traces;
 
     init_classnumbers();
-    cout << classnumber_tablesize << endl;
 
     level = atoi(argv[1]);
     chi_number = atoi(argv[2]);

@@ -3,7 +3,7 @@
 #include "flint/nmod_poly.h"
 #include "flint/nmod_mat.h"
 
-#include "modform_modp.h"
+#include "cuspforms_modp.h"
 #include "classnumbers.h"
 
 using namespace std;
