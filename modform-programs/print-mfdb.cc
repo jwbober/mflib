@@ -18,6 +18,8 @@ static complex<double> acb_get_z(const acb_t in) {
 unsigned int print_start = 1;
 unsigned int print_end = 10;
 
+int prec = 10;
+
 int callback(struct mfheader * header, int coeff_datasize, const void * coeff_data, acb_ptr coeffs) {
     cout << header->level << "." << header->weight << "." << header->chi << "." << header->j
         << " " << header->ncoeffs << " " << header->prec;
@@ -27,7 +29,7 @@ int callback(struct mfheader * header, int coeff_datasize, const void * coeff_da
     for(int k = start; k < end; k++) {
         //cout << " " << acb_get_z(coeffs + k);
         cout << " ";
-        acb_printd(coeffs + k, 100); 
+        acb_printd(coeffs + k, prec); 
     }
     cout << endl;
     count++;
@@ -63,6 +65,9 @@ int main(int argc, char ** argv) {
     }
     if(argc > 6) {
         print_end = atoi(argv[6]);
+    }
+    if(argc > 7) {
+        prec = atoi(argv[7]);
     }
 
     iterate_through_sqlitefile_with_filter(argv[1], callback, 1, level, weight, chi);
