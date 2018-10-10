@@ -13,7 +13,7 @@ long classnumber_tablesize;
 
 int init_classnumbers() {
     std::string home = std::getenv("HOME");
-    std::string filelocation = home + "/include/classnumbers";
+    std::string filelocation = home + "/include/imaginary-quadratic-classnumbers";
     int fd = open(filelocation.c_str(), O_RDONLY);
     if(fd == -1) {
         std::cerr << "error opening mmapped file" << std::endl;

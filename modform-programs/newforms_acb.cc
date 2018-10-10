@@ -20,6 +20,21 @@ long arb_abs_prec_approx(arb_t x) {
     return floor(mag_bits);
 }
 
+const char * usage =
+"usage: ./newforms_acb level weight chi ncoeffs outpath prec targetaccuracy [nthreads] [verbose]\n"
+"\n"
+"Create the file outpath/level/weight/level.weight.chi.mfdb with coefficient of\n"
+"that level, weight, and character. All computations are with prec working\n"
+"precision, and ncoeffs will be computed and output to an absolute accuracy at\n"
+"most 2^targetaccuracy, though if the working precision was not high enough\n"
+"they may be output with lower accuracy (and as a special exception they may be\n"
+"output with infinite accuracy when we can determine that they are integers).\n"
+"\n"
+"See README.md for more information."
+"\n"
+"example:\n"
+"newforms_acb 315 4 2 2000 mfoutput/ 1000 -200 10 0\n";
+
 int main(int argc, char ** argv) {
     srand(time(NULL));
     int level;
@@ -28,7 +43,7 @@ int main(int argc, char ** argv) {
     int ncoeffs;
 
     if(argc < 7) {
-        cout << "usage: ./newforms_acb level weight chi ncoeffs outpath prec targetprec [nthreads] [verbose]" << endl;
+        cout << usage;
         return 0;
     }
     init_classnumbers();
