@@ -147,3 +147,19 @@ A table of this sort can be built by the code in
 executable built by that source file can be run multiple times in parallel, and
 the results concatenated together. (d < 1000000000 has so far been sufficient
 for my purposes, and only takes 4 billion bytes to store.)
+
+Acknowledgements
+================
+
+The code in the Threadpool directory was taken from
+https://github.com/progschj/ThreadPool with no change at the moment except to
+add a remark in the readme file about where it was taken from.
+
+`arc_poly_gcd.c` was written by Andy Booker, as was the function
+`match_eigenvalues_rotate_gcd()` and whatever small functions that uses.
+
+A few small functions in `slint.h` were taken from Victor Shoup's NTL. These
+are things that are not difficult to write from scratch but I was lazy.
+
+The algorithms implemented here were developed jointly with Andy Booker and Min
+Lee.
