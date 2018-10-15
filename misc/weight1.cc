@@ -233,7 +233,7 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, long& p, int ext
     nmod_poly_t E3_inverse;
     nmod_poly_init(E3_inverse, p);
     nmod_poly_inv_series(E3_inverse, E3, Q);
-    cout << p << endl;
+    //cout << p << endl;
     for(int k = 0; k < weight2_dimension; k++) {
         for(int j = 0; j < Q; j++) {
             nmod_poly_set_coeff_ui(g, j, nmod_mat_entry(weight1_basis, j, k));
@@ -247,11 +247,11 @@ int weight1_dimension_bound(int level, DirichletCharacter& chi, long& p, int ext
         }
         z = InvMod(z, p);
         nmod_poly_scalar_mul_nmod(f, f, z);
-        for(int j = 0; j < Q/2; j++) {
-            cout << nmod_poly_get_coeff_ui(f, j) << " ";
-        }
-        cout << endl;
-        cout << endl;
+        //for(int j = 0; j < Q/2; j++) {
+        //    cout << nmod_poly_get_coeff_ui(f, j) << " ";
+        //}
+        //cout << endl;
+        //cout << endl;
     }
     //nmod_mat_print_pretty(weight1_basis);
 

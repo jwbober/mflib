@@ -8,8 +8,8 @@ PREFIX=$(HOME)
 export CXXFLAGS CFLAGS
 
 INCLUDES = $(wildcard *.h)
-MODFORM_BINARIES = bin/newform-dimension bin/newforms_acb bin/print-mfdb bin/hecke-polynomials-from-mfdb
-MF_DIRS = classnumbers arb-extras cuspforms_acb mfformat cuspforms_modp flint-extras slint
+MODFORM_BINARIES = bin/newform-dimension bin/newforms_acb bin/print-mfdb bin/hecke-polynomials-from-mfdb bin/weight1_dimension
+MF_DIRS = classnumbers arb-extras cuspforms_acb mfformat cuspforms_modp flint-extras slint cuspforms_weight1_modp
 
 LIBMF_OBJECTS = $(foreach dir, $(MF_DIRS), $(patsubst %.c,%.o,$(wildcard $(dir)/*.c)) $(patsubst %.cc,%.o,$(wildcard $(dir)/*.cc)) )
 
