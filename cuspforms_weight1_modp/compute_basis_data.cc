@@ -70,7 +70,8 @@ void cuspforms_weight1_modp::compute_basis_data() {
     nmod_mat_t half_nullspace;
 
     nmod_mat_window_init(half_nullspace, nullspace, 0, 0, d3, _dimension);
-    nmod_mat_init_set(basis_transformation, half_nullspace);
+    nmod_mat_init(basis_transformation, _dimension, d3, p);
+    nmod_mat_transpose(basis_transformation, half_nullspace);
 
     nmod_mat_window_clear(half_nullspace);
 
