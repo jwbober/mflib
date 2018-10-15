@@ -72,7 +72,17 @@ public:
     void hecke_matrix(nmod_mat_t Tp, int n);
 
     const std::vector<int>& newspace_basis_data(bool coprime_only = true);
+
+    // There are two options for computing a basis of the full space of
+    // cusp forms. The "simple" option computes a basis of the space as cusp forms
+    // in higher level and weight divided by the Eisenstein series E3.
+    //
+    // The default option (which will use the simple basis internally) is to
+    // compute a basis which consists consists as much as possible of forms
+    // lifted from lower levels.
+
     void basis(nmod_mat_t basis, int ncoeffs);
+    void simplebasis(nmod_mat_t basis, int ncoeffs);
 
     cuspforms_weight1_modp(DirichletCharacter &_chi, long _p, int _verbose = 0);
     ~cuspforms_weight1_modp();

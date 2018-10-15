@@ -3,11 +3,11 @@ CFLAGS = -O2 -g -I/home/bober/include/flint -I$(CURDIR)/.. -Wall -Wno-sign-compa
 AT=@
 LDFLAGS = ../libmodform.a -lflint -larb -lgmp -lntl -lsqlite3
 
-MISC_BINARIES = modp_basis modp_trace weight1 hecke-polynomials-from-scratch modp_newbasis print-traces read-polydb-entries read-polydb-entries2 read-single-mfdb-entry
+MISC_BINARIES = modp_basis modp_trace weight1 hecke-polynomials-from-scratch modp_newbasis print-traces read-polydb-entries read-polydb-entries2 read-single-mfdb-entry weight1-basis-modp
 
 all: $(MISC_BINARIES)
 
-$(MISC_BINARIES): % : %.cc
+$(MISC_BINARIES): % : %.cc ../libmodform.a
 	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
 build-factor-table: build-factor-table.cc
