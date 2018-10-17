@@ -27,7 +27,8 @@ int main(int argc, char ** argv) {
 
     nmod_mat_t basis;
 
-    S->simplebasis(basis, ncoeffs);
+    S->basis(basis, ncoeffs);
+
     int d = S->dimension();
     for(int k = 0; k < d; k++) {
         cout << nmod_mat_entry(basis, k, 0);
