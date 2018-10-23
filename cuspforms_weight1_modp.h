@@ -66,12 +66,13 @@ public:
     int dimension();
     int new_dimension();
 
-    void newspace_basis(nmod_mat_t basis, int ncoeffs);
+    int newspace_basis(nmod_mat_t basis, int ncoeffs);
     void newforms(nmod_mat_t forms, int ncoeffs);
 
     // hecke matrix with respect to the default basis of the full space.
     // Note that our hecke matrix acts on the LEFT.
     void hecke_matrix(nmod_mat_t Tp, int n);
+    void hecke_matrix2(nmod_mat_t Tp, int n, nmod_mat_t basis_mat);
 
     const std::vector<int>& newspace_basis_data(bool coprime_only = true);
 

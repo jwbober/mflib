@@ -24,6 +24,7 @@ cuspforms_weight1_modp * get_cuspforms_weight1_modp(DirichletCharacter &chi,
                                                     int verbose) {
     lock_guard<recursive_mutex> lock(cache_mutex);
     long order = order_mod(chi.m, chi.parent->q);
+    order = LCM((int)order, 120);
     if(order % 2 != 0) order *= 2; // this may not be the order anymore, of course,
                                    // but we need the main point is that p needs to
                                    // split in all appropriate fields

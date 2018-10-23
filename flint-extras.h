@@ -7,6 +7,8 @@
 // first. maybe that's not good, but I don't want to worry about whether it is
 // #include "flint/whatever" or #include "whatever"
 
+#include "fmpz_poly.h"
+
 #ifdef __cplusplus
 
 #include <ostream>
@@ -44,6 +46,7 @@ void x_fmpz_poly_read_raw(fmpz_poly_t f, const void * data, size_t datasize);
 void x_fmpz_vec_write_raw(char ** data, size_t * datasize, long len, fmpz * vec);
 void x_fmpz_vec_read_raw(long * len, fmpz ** vec, const void * data, size_t datasize);
 
+void nmod_mat_print_sage(const nmod_mat_t A, const char * name);
 
 #ifdef __cplusplus
 }
