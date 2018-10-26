@@ -20,6 +20,8 @@ int main2(int argc, char ** argv) {
     int level2 = atoi(argv[2]);
     int weight1 = atoi(argv[3]);
     int weight2 = atoi(argv[4]);
+    int one_conjugate_only = 0;
+    if(argc > 5) one_conjugate_only = atoi(argv[5]);
     int prec = 500;
 
     init_classnumbers();
@@ -32,6 +34,7 @@ int main2(int argc, char ** argv) {
         for(int weight = weight1; weight <= weight2; weight++) {
             for(int n = 1; n < (level == 1 ? 2 : level); n++) {
                 if(GCD(level, n) != 1) continue;
+                if(level > 1 && one_conjugate_only && InvMod(n, level) < n) continue;
                 DirichletCharacter chi = G.character(n);
                 if(chi.is_even() && weight % 2 == 1) continue;
                 if(!chi.is_even() && weight % 2 == 0) continue;
@@ -72,15 +75,33 @@ int main(int argc, char ** argv) {
     int prec = 500;
     DirichletGroup G(level, prec);
     if(chi_number == 0) {
+        long S = 0;
         for(int n = 1; n < (level == 1 ? 2 : level); n++) {
             if(GCD(level, n) != 1) continue;
             DirichletCharacter chi = G.character(n);
             if(chi.is_even() && weight % 2 == 1) continue;
             if(!chi.is_even() && weight % 2 == 0) continue;
             int dimension = get_cuspforms_acb(chi, weight)->new_dimension();
+            S = S + dimension;
             if(dimension != 0)
                 cout << level << " " << weight << " " << n << " " << dimension << endl;
         }
+        cout << S << endl;
+    }
+    else if(chi_number == -1) {
+        long S = 0;
+        for(int n = 1; n < (level == 1 ? 2 : level); n++) {
+            if(GCD(level, n) != 1) continue;
+            if(InvMod(n, level) < n) continue;
+            DirichletCharacter chi = G.character(n);
+            if(chi.is_even() && weight % 2 == 1) continue;
+            if(!chi.is_even() && weight % 2 == 0) continue;
+            int dimension = get_cuspforms_acb(chi, weight)->new_dimension();
+            S = S + dimension;
+            if(dimension != 0)
+                cout << level << " " << weight << " " << n << " " << dimension << endl;
+        }
+        cout << S << endl;
     }
     else {
         if(GCD(level, chi_number) != 1) return 0;
