@@ -7,7 +7,7 @@
 // first. maybe that's not good, but I don't want to worry about whether it is
 // #include "flint/whatever" or #include "whatever"
 
-#include "fmpz_poly.h"
+#include "flint/fmpz_poly.h"
 
 #ifdef __cplusplus
 

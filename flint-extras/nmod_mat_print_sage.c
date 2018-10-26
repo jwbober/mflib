@@ -1,4 +1,4 @@
-#include "nmod_mat.h"
+#include "flint/nmod_mat.h"
 
 void nmod_mat_print_sage(const nmod_mat_t A, const char * name) {
     int nrows = nmod_mat_nrows(A);
@@ -7,11 +7,11 @@ void nmod_mat_print_sage(const nmod_mat_t A, const char * name) {
     for(int j = 0; j < nrows; j++) {
         printf("[");
         for(int k = 0; k < ncols; k++) {
-            printf("%d", nmod_mat_entry(A, j, k));
+            printf("%ld", nmod_mat_entry(A, j, k));
             if(k < nrows - 1)
                 printf(", ");
         }
         printf("],\n");
     }
-    printf("], ring = Integers(%d))\n", A[0].mod.n);
+    printf("], ring = Integers(%ld))\n", A[0].mod.n);
 }
