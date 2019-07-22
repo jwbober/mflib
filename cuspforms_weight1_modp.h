@@ -55,7 +55,8 @@ public:
 
     nmod_mat_t basis_transformation;
     int basis_data_computed = false;
-    void compute_basis_data();
+
+    void compute_basis_data(); // Fill the matrix basis_transformation
 
     //long trace(int n);              // Get Tn, computing it first if necessary
     //long trace_TnTm(int n, int m);  // Trace of the product of two Hecke operators
