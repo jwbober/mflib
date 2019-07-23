@@ -29,9 +29,71 @@ const char * usage =
 "After this there is a list of polynomials, one per line, which are the minimal\n"
 "polynomials of a_2 + a_3 + ... + a_n.\n"
 "\n"
-"This program works by computing these polynomials mod p for successively larger\n"
-"and larger primes p until the computation stabilizes; technically this is not a\n"
-"proof that they are correct.\n";
+"This program works by computing these polynomials mod p for enough small primes\n"
+"to recover the exact polynomial over the integers.\n";
+
+
+void coefficient_bound(fmpz_t bound, int level, int weight, int dimension, int X) {
+    // compute an upper bound for the log of the size of the largest coefficient
+    // of the characteristic polynomial of T2 + T3 + T4 + ... + TX acting
+    // on a space of given weight and level.
+
+    const int prec = 10000; // whatever
+
+    arb_t zbound;
+    arb_init(zbound);
+
+    fmpz_t kk;
+
+    arb_t c, t, s;
+    arb_init(c);
+    arb_init(t);
+    arb_init(s);
+
+    fmpz_init(kk);
+
+    for(int n = 2; n <= X; n++) {
+        arb_set_ui(c, n);
+        arb_pow_ui(c, c, weight - 1, prec);
+        arb_sqrt(c, c, prec);
+        arb_mul_ui(c, c, ndivisors(n), prec);
+        arb_add_ui(c, c, 1, prec);
+
+        arb_set_ui(t, dimension + 1);
+        arb_div(t, t, c, prec);
+        arb_floor(t, t, prec);
+        if(!arb_get_unique_fmpz(kk, t)) {
+            cout << "ohno" << endl;
+            exit(-1);
+        }
+
+        long k = fmpz_get_si(kk);
+
+        arb_sub_ui(c, c, 1, prec);
+
+        arb_set_ui(s, dimension);
+        arb_sub_ui(s, s, k, prec);
+        arb_pow(c, c, s, prec);
+        fmpz_bin_uiui(kk, dimension, k);
+        arb_mul_fmpz(c, c, kk, prec);
+
+        arb_add(zbound, zbound, c, prec);
+    }
+
+    arf_t Z;
+    arf_init(Z);
+    arb_get_abs_ubound_arf(Z, zbound, prec);
+    arf_get_fmpz(bound, Z, ARF_RND_CEIL);
+
+    arf_clear(Z);
+
+    fmpz_clear(kk);
+    arb_clear(zbound);
+    arb_clear(c);
+    arb_clear(t);
+    arb_clear(s);
+}
+
 
 int main(int argc, char ** argv) {
     clock_t start_time = clock();
@@ -40,17 +102,19 @@ int main(int argc, char ** argv) {
     int weight;
     long p;
 
-    if(argc < 5) {
+    if(argc < 4) {
         cout << argv[0] << usage;
         return 0;
     }
+
 
     init_classnumbers();
 
     level = atoi(argv[1]);
     weight = atoi(argv[2]);
     chi_number = atoi(argv[3]);
-    p = atol(argv[4]);
+
+    p = 1125899906842679;
 
     //cout << level << endl
     //     << weight << endl
@@ -58,7 +122,7 @@ int main(int argc, char ** argv) {
     //     << p << endl;
 
     int verbose = 0;
-    if(argc > 5) verbose = atoi(argv[5]);
+    if(argc > 4) verbose = atoi(argv[4]);
     int verbose2 = 0;
     if(verbose > 0) verbose2 = verbose - 1;
 
@@ -72,6 +136,9 @@ int main(int argc, char ** argv) {
     vector<long> orbit(_orbit.begin(), _orbit.end());
     cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
     int dim = S->new_dimension();
+    int total_dimension = dim * orbit.size();
+    cout << "dimension over cyclotomic field = " << dim << endl;
+    cout << "dimension over Q = " << total_dimension << endl;
     if(dim == 0) return 0;
     p = S->p;
 
@@ -106,6 +173,7 @@ int main(int argc, char ** argv) {
         nmod_mat_zero(hecke_mats[k]);
     }
 
+    clock_t loopstart = clock();
     nmod_poly_init(hecke_poly_modp, p);
     int n = 1; {
         nmod_poly_t f;
@@ -143,17 +211,30 @@ int main(int argc, char ** argv) {
         nmod_mat_clear(hecke_mats[k]);
     }
 
+    fmpz_t bound;
+    fmpz_init(bound);
+
+    coefficient_bound(bound, level, weight, total_dimension, n);
+
     nmod_poly_clear(hecke_poly_modp);
     if(verbose) {
         cout << "finished initial work." << endl;
     }
 
     do {
+        //fmpz_poly_print_pretty(hecke2, "x"); cout << endl;
         fmpz_poly_set(hecke1, hecke2);
         p += 1;
         cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
         p = S->p;
-        if(verbose) cout << p << endl;
+        //if(verbose) cout << p << endl;
+        if(verbose) {
+            clock_t looptime = clock();
+            double time_so_far = (looptime - loopstart)/(double)CLOCKS_PER_SEC;
+            double percent_finished = fmpz_bits(modulus)/(double)fmpz_bits(bound);
+            double total_estimate = time_so_far/percent_finished;
+            cout << percent_finished << " " << time_so_far << " " << total_estimate << endl;
+        }
         nmod_poly_init(hecke_poly_modp, p);
         nmod_poly_one(hecke_poly_modp);
         nmod_poly_t f;
@@ -186,7 +267,33 @@ int main(int argc, char ** argv) {
         nmod_poly_clear(f);
         nmod_poly_clear(hecke_poly_modp);
         clear_cuspforms_modp();
-    } while(!fmpz_poly_equal(hecke1, hecke2));
+    } while(fmpz_cmp(modulus, bound) < 0);
+
+    //while(!fmpz_poly_equal(hecke1, hecke2));
+
+    {
+        fmpz_t x;
+        fmpz_t largest;
+        fmpz_init(x); fmpz_init(largest);
+
+        for(int k = 0; k < fmpz_poly_degree(hecke1); k++) {
+            fmpz_poly_get_coeff_fmpz(x, hecke1, k);
+            fmpz_abs(x, x);
+            if(fmpz_cmp(largest, x) < 0) {
+                fmpz_set(largest, x);
+            }
+        }
+
+        cout << "largest coefficient: ";
+        fmpz_print(largest);
+        cout << endl;
+
+        cout << "upper bound: ";
+        fmpz_print(bound);
+        cout << endl;
+
+        fmpz_clear(x); fmpz_clear(largest);
+    }
 
     if(!fmpz_poly_is_squarefree(hecke1)) {
         cout << "something went wrong." << endl;
