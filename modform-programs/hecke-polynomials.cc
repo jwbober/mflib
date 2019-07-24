@@ -17,6 +17,8 @@
 
 #include "ThreadPool/ThreadPool.h"
 
+#include "flint-extras.h"
+
 using namespace std;
 
 const char * usage =
@@ -141,8 +143,8 @@ int main(int argc, char ** argv) {
     int dim = S->new_dimension();
     int orbitsize = orbit.size();
     int total_dimension = dim * orbitsize;
-    cout << "dimension over cyclotomic field = " << dim << endl;
-    cout << "dimension over Q = " << total_dimension << endl;
+    cerr << "dimension over cyclotomic field = " << dim << endl;
+    cerr << "dimension over Q = " << total_dimension << endl;
     if(dim == 0) return 0;
     p = S->p;
 
@@ -187,7 +189,7 @@ int main(int argc, char ** argv) {
             n += 1;
 
             if(verbose) {
-                cout << n << endl;
+                cerr << n << endl;
             }
 
             ThreadPool * pool = new ThreadPool(min(nthreads, orbitsize));
@@ -266,7 +268,7 @@ int main(int argc, char ** argv) {
 
     nmod_poly_clear(hecke_poly_modp);
     if(verbose) {
-        cout << "finished initial work." << endl;
+        cerr << "finished initial work." << endl;
     }
 
     do {
@@ -281,7 +283,7 @@ int main(int argc, char ** argv) {
             double time_so_far = (looptime - loopstart)/(double)CLOCKS_PER_SEC;
             double percent_finished = fmpz_bits(modulus)/(double)fmpz_bits(bound);
             double total_estimate = time_so_far/percent_finished;
-            cout << percent_finished << " " << time_so_far << " " << total_estimate << endl;
+            cerr << percent_finished << " " << time_so_far << " " << total_estimate << endl;
         }
         nmod_poly_init(hecke_poly_modp, p);
         nmod_poly_one(hecke_poly_modp);
@@ -363,22 +365,17 @@ int main(int argc, char ** argv) {
             }
         }
 
-        cout << "largest coefficient: ";
-        fmpz_print(largest);
-        cout << endl;
-
-        cout << "upper bound: ";
-        fmpz_print(bound);
-        cout << endl;
+        cerr << "largest coefficient: " << largest << endl;
+        cerr << "upper bound: " << bound << endl;
 
         fmpz_clear(x); fmpz_clear(largest);
     }
 
     if(!fmpz_poly_is_squarefree(hecke1)) {
-        cout << "something went wrong." << endl;
-        cout << n << " ";
+        cerr << "something went wrong." << endl;
+        cerr << n << " ";
         fmpz_poly_print_pretty(hecke1, "x");
-        cout << endl;
+        cerr << endl;
         return 1;
     }
     cout << level << " " << weight;
