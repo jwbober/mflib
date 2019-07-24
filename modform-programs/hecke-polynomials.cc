@@ -10,10 +10,12 @@
 #include <fstream>
 #include <iomanip>
 #include <ctime>
+#include <thread>
 
 #include "NTL/ZZX.h"
 #include "NTL/ZZXFactoring.h"
 
+#include "ThreadPool/ThreadPool.h"
 
 using namespace std;
 
@@ -102,7 +104,7 @@ int main(int argc, char ** argv) {
     int weight;
     long p;
 
-    if(argc < 4) {
+    if(argc < 5) {
         cout << argv[0] << usage;
         return 0;
     }
@@ -113,6 +115,7 @@ int main(int argc, char ** argv) {
     level = atoi(argv[1]);
     weight = atoi(argv[2]);
     chi_number = atoi(argv[3]);
+    int nthreads = atoi(argv[4]);
 
     p = 1125899906842679;
 
@@ -122,7 +125,7 @@ int main(int argc, char ** argv) {
     //     << p << endl;
 
     int verbose = 0;
-    if(argc > 4) verbose = atoi(argv[4]);
+    if(argc > 5) verbose = atoi(argv[5]);
     int verbose2 = 0;
     if(verbose > 0) verbose2 = verbose - 1;
 
@@ -136,7 +139,8 @@ int main(int argc, char ** argv) {
     vector<long> orbit(_orbit.begin(), _orbit.end());
     cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
     int dim = S->new_dimension();
-    int total_dimension = dim * orbit.size();
+    int orbitsize = orbit.size();
+    int total_dimension = dim * orbitsize;
     cout << "dimension over cyclotomic field = " << dim << endl;
     cout << "dimension over Q = " << total_dimension << endl;
     if(dim == 0) return 0;
@@ -167,7 +171,7 @@ int main(int argc, char ** argv) {
     // if this will work well mod p, but I guess it will for large p at least, and
     // I suppose I'll find out quickly if it doesn't.
 
-    nmod_mat_t hecke_mats[orbit.size()];
+    nmod_mat_t * hecke_mats = new nmod_mat_t[orbit.size()];
     for(unsigned int k = 0; k < orbit.size(); k++) {
         nmod_mat_init(hecke_mats[k], dim, dim, p);
         nmod_mat_zero(hecke_mats[k]);
@@ -181,21 +185,63 @@ int main(int argc, char ** argv) {
 
         do {
             n += 1;
+
             if(verbose) {
                 cout << n << endl;
             }
-            nmod_poly_one(hecke_poly_modp);
-            for(unsigned int k = 0; k < orbit.size(); k++) {
-                chi = G.character(orbit[k]);
-                cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
-                nmod_mat_t Tn;
-                S->hecke_matrix(Tn, n);
-                nmod_mat_add(hecke_mats[k], hecke_mats[k], Tn);
-                nmod_mat_charpoly(f, hecke_mats[k]);
-                nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
-                nmod_mat_clear(Tn);
+
+            ThreadPool * pool = new ThreadPool(min(nthreads, orbitsize));
+
+            nmod_poly_t * local_polys = new nmod_poly_t[orbitsize];
+            for(int k = 0; k < orbitsize; k++) {
+                nmod_poly_init(local_polys[k], p);
             }
+
+            for(int k = 0; k < orbitsize;  k++) {
+                long m = orbit[k];
+                chi = G.character(m);
+                cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
+                p = S->p;
+                pool->enqueue( [hecke_mats, local_polys, k, S, p, &n]() {
+                    nmod_mat_t Tn;
+                    S->hecke_matrix(Tn, n);
+                    nmod_mat_add(hecke_mats[k], hecke_mats[k], Tn);
+                    nmod_mat_charpoly(local_polys[k], hecke_mats[k]);
+                    //nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
+                    nmod_mat_clear(Tn);
+                });
+            }
+            delete pool;
+
+            nmod_poly_one(hecke_poly_modp);
+            for(int k = 0; k < orbitsize; k++) {
+                nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, local_polys[k]);
+                nmod_poly_clear(local_polys[k]);
+            }
+            delete [] local_polys;
+
+            //for(unsigned int k = 0; k < orbit.size(); k++) {
+            //    chi = G.character(orbit[k]);
+            //    cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
+            //    nmod_mat_t Tn;
+            //    S->hecke_matrix(Tn, n);
+            //    nmod_mat_add(hecke_mats[k], hecke_mats[k], Tn);
+            //    nmod_mat_charpoly(f, hecke_mats[k]);
+            //    nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
+            //    nmod_mat_clear(Tn);
+            // }
         } while(!nmod_poly_is_squarefree(hecke_poly_modp));
+
+        //nmod_poly_factor_t factorization;
+        //nmod_poly_factor_init(factorization);
+        //nmod_poly_factor(factorization, hecke_poly_modp);
+        //cout << "factorization type: ";
+        //for(int k = 0; k < factorization[0].num; k++) {
+        //    cout << " (" << nmod_poly_degree(factorization[0].p + k)
+        //         << "," << factorization[0].exp[k] << ")";
+        //}
+        //cout << endl;
+        //nmod_poly_factor_clear(factorization);
 
         int degree = nmod_poly_degree(hecke_poly_modp);
         for(int k = 0; k <= degree; k++) {
@@ -210,6 +256,8 @@ int main(int argc, char ** argv) {
     for(unsigned int k = 0; k < orbit.size(); k++) {
         nmod_mat_clear(hecke_mats[k]);
     }
+
+    delete [] hecke_mats;
 
     fmpz_t bound;
     fmpz_init(bound);
@@ -239,22 +287,53 @@ int main(int argc, char ** argv) {
         nmod_poly_one(hecke_poly_modp);
         nmod_poly_t f;
         nmod_poly_init(f, p);
-        for(long m : orbit) {
+        nmod_poly_t * local_polys = new nmod_poly_t[orbitsize];
+        for(int k = 0; k < orbitsize; k++) {
+            nmod_poly_init(local_polys[k], p);
+        }
+
+        ThreadPool * pool = new ThreadPool(min(nthreads, orbitsize));
+
+        //for(long m : orbit) {
+        for(int k = 0; k < orbitsize;  k++) {
+            long m = orbit[k];
             chi = G.character(m);
             cuspforms_modp * S = get_cuspforms_modp(chi, weight, p, verbose2);
             p = S->p;
-            nmod_mat_t hecke_mat;
-            S->hecke_matrix(hecke_mat, 2);
-            for(int l = 3; l <= n; l++) {
-                nmod_mat_t Tl;
-                S->hecke_matrix(Tl, l);
-                nmod_mat_add(hecke_mat, hecke_mat, Tl);
-                nmod_mat_clear(Tl);
-            }
-            nmod_mat_charpoly(f, hecke_mat);
-            nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
-            nmod_mat_clear(hecke_mat);
+            pool->enqueue( [local_polys, k, S, p, &n]() {
+                nmod_mat_t hecke_mat;
+                S->hecke_matrix(hecke_mat, 2);
+                for(int l = 3; l <= n; l++) {
+                    nmod_mat_t Tl;
+                    S->hecke_matrix(Tl, l);
+                    nmod_mat_add(hecke_mat, hecke_mat, Tl);
+                    nmod_mat_clear(Tl);
+                }
+                nmod_mat_charpoly(local_polys[k], hecke_mat);
+                //nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, f);
+                nmod_mat_clear(hecke_mat);
+            });
         }
+        delete pool;
+        for(int k = 0; k < orbitsize; k++) {
+            nmod_poly_mul(hecke_poly_modp, hecke_poly_modp, local_polys[k]);
+            nmod_poly_clear(local_polys[k]);
+        }
+
+        delete [] local_polys;
+
+        //nmod_poly_factor_t factorization;
+        //nmod_poly_factor_init(factorization);
+        //nmod_poly_factor(factorization, hecke_poly_modp);
+        //cout << "factorization type: ";
+        //for(int k = 0; k < factorization[0].num; k++) {
+        //    cout << " (" << nmod_poly_degree(factorization[0].p + k)
+        //         << "," << factorization[0].exp[k] << ")";
+        //}
+        //cout << endl;
+        //nmod_poly_factor_clear(factorization);
+
+
         int degree = nmod_poly_degree(hecke_poly_modp);
         for(int k = 0; k <= degree; k++) {
             fmpz_poly_get_coeff_fmpz(a, hecke1, k);
